@@ -136,10 +136,6 @@ const playSound = async (soundType: 'focus' | 'rest' | 'complete') => {
   })
 }
 
-const toggleSound = () => {
-  soundEnabled.value = !soundEnabled.value
-}
-
 // 计算属性：当前周期时间（毫秒）、标签及颜色
 const currentModeTime = computed(() => {
   // Check if progress is within bounds
@@ -203,42 +199,6 @@ const nextStage = async () => {
 // Then modify the onEnd function to simply call nextStage
 const onEnd = () => {
   nextStage()
-}
-
-const toggleTimer = () => {
-  // 确保 countdownRef 不为 null
-  if (!countdownRef.value) {
-    console.warn('倒计时引用为空，无法控制计时器')
-    return
-  }
-
-  if (isRunning.value) {
-    try {
-      countdownRef.value.pause()
-      isRunning.value = false
-      console.log('计时器已暂停')
-    } catch (error) {
-      console.error('暂停计时器失败:', error)
-    }
-  } else {
-    try {
-      countdownRef.value.start()
-      isRunning.value = true
-      console.log('计时器已启动')
-
-      // 如果是首次启动，播放对应阶段的声音
-      if (config.task.progress === 0) {
-        const currentLabel = currentModeLabel.value.toLowerCase()
-        if (currentLabel.includes('focus')) {
-          playSound('focus')
-        } else if (currentLabel.includes('rest')) {
-          playSound('rest')
-        }
-      }
-    } catch (error) {
-      console.error('启动计时器失败:', error)
-    }
-  }
 }
 
 const resetTimer = () => {

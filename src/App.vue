@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NMessageProvider, NConfigProvider, darkTheme, NGlobalStyle } from 'naive-ui'
-import { onMounted, ref, watch, provide } from 'vue'
+import { ref, watch, provide } from 'vue'
 import potato_clock from './components/potato_clock.vue'
 import misson_l from './components/misson_l.vue'
 import NintendoSwitchTransition from './components/NintendoSwitchTransition.vue'

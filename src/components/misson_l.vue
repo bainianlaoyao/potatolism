@@ -215,7 +215,7 @@ import {
   NSwitch,
 } from 'naive-ui'
 import { AddOutline, CheckmarkOutline, SettingsOutline } from '@vicons/ionicons5'
-import { default_task, infinite_task, type CycleItem, type Task } from '@/utils/share_type'
+import { infinite_task, type CycleItem, type Task } from '@/utils/share_type'
 import hover_card from './hover_card.vue'
 // 修改：使用 v-model 传入 tasks
 const props = defineProps<{
