@@ -22,9 +22,21 @@
               config.task.time_up
                 ? 100
                 : Math.round(
-                    ((completedTime + (currentModeTime - totalMilliseconds) / currentModeTime * config.task.cycleList[config.task.progress][0] * 60 * 1000) /
-                      totalTaskTime) *
-                      100
+                    (() => {
+                      // 计算已完成阶段的总时间（分钟）
+                      const completedTime = config.task.cycleList
+                        .slice(0, config.task.progress)
+                        .reduce((sum, [time]) => sum + time, 0)
+
+                      // 当前阶段已完成的时间（分钟）
+                      const currentCompletedTime = (currentModeTime - totalMilliseconds) / (60 * 1000)
+
+                      // 总时间（分钟）
+                      const totalTime = config.task.cycleList.reduce((sum, [time]) => sum + time, 0)
+
+                      // 计算进度百分比
+                      return ((completedTime + currentCompletedTime) / totalTime) * 100
+                    })()
                   )
             "
             :color="modeColor"
@@ -132,22 +144,6 @@ const toggleSound = () => {
 const currentModeTime = computed(() => {
   // Check if progress is within bounds
   return config.task.cycleList[config.task.progress][0] * 60 * 1000
-})
-
-// 计算总任务时间（毫秒）
-const totalTaskTime = computed(() => {
-  return config.task.cycleList.reduce((total, cycle) => total + cycle[0] * 60 * 1000, 0)
-})
-
-// 计算已完成时间（毫秒）
-const completedTime = computed(() => {
-  let completed = 0
-  // 已完成阶段的时间
-  for (let i = 0; i < config.task.progress; i++) {
-    completed += config.task.cycleList[i][0] * 60 * 1000
-  }
-  // 当前阶段已完成的时间（需要从外部获取剩余时间）
-  return completed
 })
 const currentModeLabel = computed(() => config.task.cycleList[config.task.progress][1])
 const modeColor = computed(() => {
