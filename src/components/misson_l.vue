@@ -327,7 +327,7 @@ const addTask = () => {
         min = 0
       }
     }
-    timeArrange.push([100, 'end'])
+    timeArrange.push([0, 'end'])
     task.cycleList = timeArrange
     tasksModel.value = [...tasksModel.value, task]
     message.success('任务添加成功')
