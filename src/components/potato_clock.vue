@@ -21,7 +21,11 @@
             :percentage="
               config.task.time_up
                 ? 100
-                : Math.round((1 - totalMilliseconds / currentModeTime) * 100)
+                : Math.round(
+                    ((config.task.progress + (currentModeTime - totalMilliseconds) / currentModeTime) /
+                      config.task.cycleList.length) *
+                      100
+                  )
             "
             :color="modeColor"
             rail-style="{ stroke: '#18181b' }"
@@ -72,7 +76,7 @@ import { NButton, NSpace, NProgress, NH1 } from 'naive-ui'
 import VueCountdown from '@chenfengyuan/vue-countdown'
 import type { Task } from '@/utils/share_type'
 import { default_task } from '@/utils/share_type'
-import { defineEmits, defineExpose } from 'vue'
+// import { defineEmits, defineExpose } from 'vue'
 // 删除原 props 定义，使用 config 代替
 
 const config = reactive({
