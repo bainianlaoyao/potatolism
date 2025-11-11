@@ -14,16 +14,12 @@ export const useTasksStore = defineStore('tasks', () => {
   const loading = ref(false)
 
   // 计算属性
-  const completedTasks = computed(() =>
-    tasks.value.filter((task: Task) => task.completed)
-  )
+  const completedTasks = computed(() => tasks.value.filter((task: Task) => task.completed))
 
-  const uncompletedTasks = computed(() =>
-    tasks.value.filter((task: Task) => !task.completed)
-  )
+  const uncompletedTasks = computed(() => tasks.value.filter((task: Task) => !task.completed))
 
-  const getTaskById = computed(() =>
-    (id: number) => tasks.value.find((task: Task) => task.id === id)
+  const getTaskById = computed(
+    () => (id: number) => tasks.value.find((task: Task) => task.id === id),
   )
 
   // 数据持久化
@@ -64,7 +60,7 @@ export const useTasksStore = defineStore('tasks', () => {
     () => {
       debouncedSave()
     },
-    { deep: true }
+    { deep: true },
   )
 
   // 初始化
@@ -110,7 +106,7 @@ export const useTasksStore = defineStore('tasks', () => {
     }
 
     tasks.value = tasks.value.map((task: Task, index: number) =>
-      index === taskIndex ? updatedTask : task
+      index === taskIndex ? updatedTask : task,
     )
 
     return updatedTask
@@ -181,6 +177,6 @@ export const useTasksStore = defineStore('tasks', () => {
 
     // 数据管理
     saveToLocalStorage,
-    loadFromLocalStorage
+    loadFromLocalStorage,
   }
 })

@@ -29,14 +29,15 @@
                         .reduce((sum, [time]) => sum + time, 0)
 
                       // 当前阶段已完成的时间（分钟）
-                      const currentCompletedTime = (currentModeTime - totalMilliseconds) / (60 * 1000)
+                      const currentCompletedTime =
+                        (currentModeTime - totalMilliseconds) / (60 * 1000)
 
                       // 总时间（分钟）
                       const totalTime = config.task.cycleList.reduce((sum, [time]) => sum + time, 0)
 
                       // 计算进度百分比
                       return ((completedTime + currentCompletedTime) / totalTime) * 100
-                    })()
+                    })(),
                   )
             "
             :color="modeColor"
@@ -250,7 +251,6 @@ const setConfig = (newConfig: Partial<{ task: Task; infinite: boolean }>) => {
   console.log('Task 全部信息:', config.task)
   countdown_start.value = true
   countdownRef.value?.restart()
-
 }
 
 defineExpose({ setConfig, resetTimer })

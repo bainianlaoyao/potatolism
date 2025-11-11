@@ -72,7 +72,7 @@ const appMethods = {
   },
   restartClock: () => {
     clockKey.value++
-  }
+  },
 }
 
 // 使用 provide 提供方法给子组件

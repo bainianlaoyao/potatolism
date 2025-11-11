@@ -33,7 +33,7 @@ export const useUIStore = defineStore('ui', () => {
   const modalVisible = ref({
     addTask: false,
     editTask: false,
-    settings: false
+    settings: false,
   })
 
   // 计算属性
@@ -41,17 +41,23 @@ export const useUIStore = defineStore('ui', () => {
 
   const animationDuration = computed(() => {
     switch (animationSpeed.value) {
-      case 'slow': return '0.5s'
-      case 'fast': return '0.2s'
-      default: return '0.3s'
+      case 'slow':
+        return '0.5s'
+      case 'fast':
+        return '0.2s'
+      default:
+        return '0.3s'
     }
   })
 
   const transitionDuration = computed(() => {
     switch (animationSpeed.value) {
-      case 'slow': return '0.4s'
-      case 'fast': return '0.15s'
-      default: return '0.25s'
+      case 'slow':
+        return '0.4s'
+      case 'fast':
+        return '0.15s'
+      default:
+        return '0.25s'
     }
   })
 
@@ -69,7 +75,7 @@ export const useUIStore = defineStore('ui', () => {
         soundEnabled: soundEnabled.value,
         autoSave: autoSave.value,
         showCompletedTasks: showCompletedTasks.value,
-        compactMode: compactMode.value
+        compactMode: compactMode.value,
       }
       localStorage.setItem('potato_ui_config', JSON.stringify(config))
     } catch (error) {
@@ -137,7 +143,7 @@ export const useUIStore = defineStore('ui', () => {
   // 模态框控制
   const showModal = (modalName: keyof typeof modalVisible.value) => {
     // 关闭其他模态框
-    Object.keys(modalVisible.value).forEach(key => {
+    Object.keys(modalVisible.value).forEach((key) => {
       if (key !== modalName) {
         modalVisible.value[key as keyof typeof modalVisible.value] = false
       }
@@ -150,7 +156,7 @@ export const useUIStore = defineStore('ui', () => {
   }
 
   const hideAllModals = () => {
-    Object.keys(modalVisible.value).forEach(key => {
+    Object.keys(modalVisible.value).forEach((key) => {
       modalVisible.value[key as keyof typeof modalVisible.value] = false
     })
   }
@@ -196,7 +202,7 @@ export const useUIStore = defineStore('ui', () => {
       soundEnabled: soundEnabled.value,
       autoSave: autoSave.value,
       showCompletedTasks: showCompletedTasks.value,
-      compactMode: compactMode.value
+      compactMode: compactMode.value,
     }
   }
 
@@ -261,6 +267,6 @@ export const useUIStore = defineStore('ui', () => {
     saveToLocalStorage,
     loadFromLocalStorage,
     exportConfig,
-    importConfig
+    importConfig,
   }
 })

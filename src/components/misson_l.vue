@@ -1,21 +1,21 @@
 <template>
   <div class="todo-app">
-
     <!-- 主内容区 -->
     <div class="main-content">
       <div class="list-header">
-
         <div class="list-title"><span class="emoji">👋</span> 任务列表</div>
       </div>
 
       <!-- 添加任务按钮移到这里 -->
       <n-button @click="showModal = true" type="info" :style="[cardStyle, { margin: '8px auto' }]">
         <n-icon :size="20"><add-outline /></n-icon>
-
-
       </n-button>
 
-      <n-button  @click="onTaskClick(infinite_task,true)" type="error" :style="[cardStyle, { margin: '8px auto' }]" >
+      <n-button
+        @click="onTaskClick(infinite_task, true)"
+        type="error"
+        :style="[cardStyle, { margin: '8px auto' }]"
+      >
         ♾ infinite
       </n-button>
 
@@ -28,7 +28,7 @@
           class="task-item"
         >
           <template #card>
-            <n-card :hoverable="true" @click="onTaskClick(task,false)">
+            <n-card :hoverable="true" @click="onTaskClick(task, false)">
               <n-thing>
                 <template #header>
                   <n-h3 prefix="bar" align-text>
@@ -350,7 +350,7 @@ const toggleTaskStatus = (id: number) => {
       return
     }
 
-    const taskExists = tasksModel.value.some(task => task.id === id)
+    const taskExists = tasksModel.value.some((task) => task.id === id)
     if (!taskExists) {
       message.error('任务不存在')
       return
@@ -378,7 +378,7 @@ const deleteTask = (id: number) => {
       return
     }
 
-    const taskExists = tasksModel.value.some(task => task.id === id)
+    const taskExists = tasksModel.value.some((task) => task.id === id)
     if (!taskExists) {
       message.error('任务不存在')
       return
@@ -472,7 +472,7 @@ const updateTask = () => {
       return
     }
 
-    const taskExists = tasksModel.value.some(task => task.id === editingTaskId.value)
+    const taskExists = tasksModel.value.some((task) => task.id === editingTaskId.value)
     if (!taskExists) {
       message.error('任务不存在')
       return
