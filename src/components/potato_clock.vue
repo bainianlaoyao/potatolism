@@ -50,7 +50,7 @@
           <n-button
             type="default"
             size="large"
-            @click="() => emit('quit', config.task)"
+            @click="() => appMethods?.task_quit(config.task)"
             class="control-button"
           >
             quit
@@ -67,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onBeforeUnmount, onMounted,  } from 'vue'
+import { ref, reactive, computed, onBeforeUnmount, onMounted, inject } from 'vue'
 import { NButton, NSpace, NProgress, NH1 } from 'naive-ui'
 import VueCountdown from '@chenfengyuan/vue-countdown'
 import type { Task } from '@/utils/share_type'
@@ -79,10 +79,13 @@ const config = reactive({
   task: default_task as Task,
   infinite: false,
 })
-const emit = defineEmits<{
-  (event: 'quit', cur: Task): void
-  (event: 'cycleComplete'): void
-}>()
+
+// 使用 inject 获取父组件提供的方法
+const appMethods = inject<{
+  task_start: (task: Task, infinite: boolean) => void
+  task_quit: (task: Task) => void
+  restartClock: () => void
+}>('appMethods')
 // 新状态：使用cycleList进行周期遍历
 const isRunning = ref(false)
 const timerSize = ref(1.5)
@@ -163,7 +166,7 @@ const nextStage = async () => {
     if (config.task.progress == config.task.cycleList.length - 1) {
       config.task.time_up = true
       await playSound('complete')
-      emit('quit', config.task)
+      appMethods?.task_quit(config.task)
       console.log('Cycle complete!')
       countdown_start.value = false
       return

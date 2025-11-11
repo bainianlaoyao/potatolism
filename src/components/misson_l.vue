@@ -193,7 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, inject } from 'vue'
 import { defineEmits, defineProps } from 'vue'
 import {
   NButton,
@@ -221,7 +221,14 @@ import hover_card from './hover_card.vue'
 const props = defineProps<{
   tasks: Task[]
 }>()
-const emit = defineEmits(['taskClick', 'update:tasks'])
+const emit = defineEmits(['update:tasks'])
+
+// 使用 inject 获取父组件提供的方法
+const appMethods = inject<{
+  task_start: (task: Task, infinite: boolean) => void
+  task_quit: (task: Task) => void
+  restartClock: () => void
+}>('appMethods')
 // 定义双向绑定 tasks
 const tasksModel = computed({
   get: () => props.tasks,
@@ -234,9 +241,6 @@ const message = useMessage()
 // 修改计算属性，基于 tasksModel 过滤
 const uncompletedTasks = computed(() => {
   return tasksModel.value.filter((task) => !task.completed)
-})
-const completedTasks = computed(() => {
-  return tasksModel.value.filter((task) => task.completed)
 })
 
 // 表单相关代码
@@ -279,66 +283,113 @@ const rules = {
 
 // 修改：添加任务操作，从 tasksModel 更新任务数组（避免直接修改 props）
 const addTask = () => {
-  const task: Task = {
-    id: Date.now(),
-    name: newTask.name,
-    estimatedTime: newTask.estimatedTime,
-    deadline: newTask.deadline,
-    completed: false,
-    cycleList: [],
-    progress: 0,
-    time_up: false,
-    longCycle: newTask.longCycle,
-  }
-  let min = task.estimatedTime * 60
-  const timeArrange: CycleItem[] = []
-
-  // 根据用户选择的模式生成番茄钟周期
-  const focusTime = newTask.longCycle ? 50 : 25
-  const restTime = newTask.longCycle ? 10 : 5
-  const cycleTime = focusTime + restTime
-
-  while (min > 0) {
-    if (min >= cycleTime) {
-      timeArrange.push([focusTime, 'focus'])
-      timeArrange.push([restTime, 'rest'])
-      min -= cycleTime
-    } else if (min >= focusTime) {
-      timeArrange.push([focusTime, 'focus'])
-      timeArrange.push([min - focusTime, 'rest'])
-      min = 0
-    } else {
-      timeArrange.push([min, 'focus'])
-      min = 0
+  try {
+    // 表单验证
+    if (!newTask.name.trim()) {
+      message.error('任务名称不能为空')
+      return
     }
+    if (newTask.estimatedTime <= 0) {
+      message.error('预估时间必须大于0')
+      return
+    }
+
+    const task: Task = {
+      id: Date.now(),
+      name: newTask.name.trim(),
+      estimatedTime: newTask.estimatedTime,
+      deadline: newTask.deadline,
+      completed: false,
+      cycleList: [],
+      progress: 0,
+      time_up: false,
+      longCycle: newTask.longCycle,
+    }
+    let min = task.estimatedTime * 60
+    const timeArrange: CycleItem[] = []
+
+    // 根据用户选择的模式生成番茄钟周期
+    const focusTime = newTask.longCycle ? 50 : 25
+    const restTime = newTask.longCycle ? 10 : 5
+    const cycleTime = focusTime + restTime
+
+    while (min > 0) {
+      if (min >= cycleTime) {
+        timeArrange.push([focusTime, 'focus'])
+        timeArrange.push([restTime, 'rest'])
+        min -= cycleTime
+      } else if (min >= focusTime) {
+        timeArrange.push([focusTime, 'focus'])
+        timeArrange.push([min - focusTime, 'rest'])
+        min = 0
+      } else {
+        timeArrange.push([min, 'focus'])
+        min = 0
+      }
+    }
+    timeArrange.push([100, 'end'])
+    task.cycleList = timeArrange
+    tasksModel.value = [...tasksModel.value, task]
+    message.success('任务添加成功')
+    showModal.value = false
+    // 重置表单
+    newTask.name = ''
+    newTask.estimatedTime = 1
+    newTask.deadline = getTodayEndTime() // 重置为当天23:59
+    newTask.longCycle = false // 重置为默认模式
+  } catch (error) {
+    console.error('添加任务失败:', error)
+    message.error('添加任务失败，请重试')
   }
-  timeArrange.push([100, 'end'])
-  task.cycleList = timeArrange
-  tasksModel.value = [...tasksModel.value, task]
-  message.success('任务添加成功')
-  showModal.value = false
-  // 重置表单
-  newTask.name = ''
-  newTask.estimatedTime = 1
-  newTask.deadline = getTodayEndTime() // 重置为当天23:59
-  newTask.longCycle = false // 重置为默认模式
 }
 
 const toggleTaskStatus = (id: number) => {
-  const updated = tasksModel.value.map((task) => {
-    if (task.id === id) {
-      return { ...task, completed: !task.completed }
+  try {
+    if (!id || typeof id !== 'number') {
+      message.error('无效的任务ID')
+      return
     }
-    return task
-  })
-  tasksModel.value = updated
-  const target = updated.find((task) => task.id === id)
-  message.info(target?.completed ? '任务已完成' : '任务已重新激活')
+
+    const taskExists = tasksModel.value.some(task => task.id === id)
+    if (!taskExists) {
+      message.error('任务不存在')
+      return
+    }
+
+    const updated = tasksModel.value.map((task) => {
+      if (task.id === id) {
+        return { ...task, completed: !task.completed }
+      }
+      return task
+    })
+    tasksModel.value = updated
+    const target = updated.find((task) => task.id === id)
+    message.info(target?.completed ? '任务已完成' : '任务已重新激活')
+  } catch (error) {
+    console.error('切换任务状态失败:', error)
+    message.error('切换任务状态失败，请重试')
+  }
 }
 
 const deleteTask = (id: number) => {
-  tasksModel.value = tasksModel.value.filter((task) => task.id !== id)
-  message.success('任务已删除')
+  try {
+    if (!id || typeof id !== 'number') {
+      message.error('无效的任务ID')
+      return
+    }
+
+    const taskExists = tasksModel.value.some(task => task.id === id)
+    if (!taskExists) {
+      message.error('任务不存在')
+      return
+    }
+
+    tasksModel.value = tasksModel.value.filter((task) => task.id !== id)
+    message.success('任务已删除')
+  } catch (error) {
+    console.error('删除任务失败:', error)
+    message.error('删除任务失败，请重试')
+  }
 }
 
 const formatDate = (timestamp: number | null): string => {
@@ -348,10 +399,10 @@ const formatDate = (timestamp: number | null): string => {
 }
 
 const onTaskClick = (task: Task, infinite: boolean): void => {
-  emit('taskClick', task,infinite)
+  appMethods?.task_start(task, infinite)
 }
 
-const boxStyle = (task: Task, cycleType: string, index: number) => {
+const boxStyle = computed(() => (task: Task, cycleType: string, index: number) => {
   const fillColor = cycleType === 'focus' ? 'orange' : 'green'
   const isFilled = task.progress > index
   return {
@@ -363,7 +414,7 @@ const boxStyle = (task: Task, cycleType: string, index: number) => {
     backgroundColor: isFilled ? fillColor : 'transparent',
     border: `1px solid ${fillColor}`,
   }
-}
+})
 const cardStyle = {
   width: '40%',
 }
@@ -405,59 +456,83 @@ const SetTaskInfo = (id: number) => {
 
 // 更新任务函数
 const updateTask = () => {
-  if (!editingTaskId.value) return
-
-  // 更新任务，但保留任务完成状态和进度
-  const updatedTasks = tasksModel.value.map((task) => {
-    if (task.id === editingTaskId.value) {
-      // 如果预估时间或番茄钟模式发生变化，需要重新计算 cycleList
-      let cycleList = task.cycleList
-      if (
-        task.estimatedTime !== editingTask.estimatedTime ||
-        task.longCycle !== editingTask.longCycle
-      ) {
-        let min = editingTask.estimatedTime * 60
-        const timeArrange: CycleItem[] = []
-
-        // 根据用户选择的模式生成番茄钟周期
-        const focusTime = editingTask.longCycle ? 50 : 25
-        const restTime = editingTask.longCycle ? 10 : 5
-        const cycleTime = focusTime + restTime
-
-        while (min > 0) {
-          if (min >= cycleTime) {
-            timeArrange.push([focusTime, 'focus'])
-            timeArrange.push([restTime, 'rest'])
-            min -= cycleTime
-          } else if (min >= focusTime) {
-            timeArrange.push([focusTime, 'focus'])
-            timeArrange.push([min - focusTime, 'rest'])
-            min = 0
-          } else {
-            timeArrange.push([min, 'focus'])
-            min = 0
-          }
-        }
-        cycleList = timeArrange.concat([[0, 'end']])
-        task.time_up = false
-      }
-
-      return {
-        ...task,
-        name: editingTask.name,
-        estimatedTime: editingTask.estimatedTime,
-        deadline: editingTask.deadline,
-        cycleList: cycleList,
-        longCycle: editingTask.longCycle,
-      }
+  try {
+    if (!editingTaskId.value) {
+      message.error('未选择要编辑的任务')
+      return
     }
-    return task
-  })
 
-  tasksModel.value = updatedTasks
-  message.success('任务已更新')
-  showEditModal.value = false
-  editingTaskId.value = null
+    // 表单验证
+    if (!editingTask.name.trim()) {
+      message.error('任务名称不能为空')
+      return
+    }
+    if (editingTask.estimatedTime <= 0) {
+      message.error('预估时间必须大于0')
+      return
+    }
+
+    const taskExists = tasksModel.value.some(task => task.id === editingTaskId.value)
+    if (!taskExists) {
+      message.error('任务不存在')
+      return
+    }
+
+    // 更新任务，但保留任务完成状态和进度
+    const updatedTasks = tasksModel.value.map((task) => {
+      if (task.id === editingTaskId.value) {
+        // 如果预估时间或番茄钟模式发生变化，需要重新计算 cycleList
+        let cycleList = task.cycleList
+        if (
+          task.estimatedTime !== editingTask.estimatedTime ||
+          task.longCycle !== editingTask.longCycle
+        ) {
+          let min = editingTask.estimatedTime * 60
+          const timeArrange: CycleItem[] = []
+
+          // 根据用户选择的模式生成番茄钟周期
+          const focusTime = editingTask.longCycle ? 50 : 25
+          const restTime = editingTask.longCycle ? 10 : 5
+          const cycleTime = focusTime + restTime
+
+          while (min > 0) {
+            if (min >= cycleTime) {
+              timeArrange.push([focusTime, 'focus'])
+              timeArrange.push([restTime, 'rest'])
+              min -= cycleTime
+            } else if (min >= focusTime) {
+              timeArrange.push([focusTime, 'focus'])
+              timeArrange.push([min - focusTime, 'rest'])
+              min = 0
+            } else {
+              timeArrange.push([min, 'focus'])
+              min = 0
+            }
+          }
+          cycleList = timeArrange.concat([[0, 'end']])
+          task.time_up = false
+        }
+
+        return {
+          ...task,
+          name: editingTask.name.trim(),
+          estimatedTime: editingTask.estimatedTime,
+          deadline: editingTask.deadline,
+          cycleList: cycleList,
+          longCycle: editingTask.longCycle,
+        }
+      }
+      return task
+    })
+
+    tasksModel.value = updatedTasks
+    message.success('任务已更新')
+    showEditModal.value = false
+    editingTaskId.value = null
+  } catch (error) {
+    console.error('更新任务失败:', error)
+    message.error('更新任务失败，请重试')
+  }
 }
 </script>
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NMessageProvider, NConfigProvider, darkTheme, NGlobalStyle } from 'naive-ui'
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, provide } from 'vue'
 import potato_clock from './components/potato_clock.vue'
 import misson_l from './components/misson_l.vue'
 import NintendoSwitchTransition from './components/NintendoSwitchTransition.vue'
@@ -11,56 +11,72 @@ const transitionRef = ref<InstanceType<typeof NintendoSwitchTransition>>()
 const clockRef = ref<InstanceType<typeof potato_clock>>()
 const clockKey = ref(0)
 
+// 防抖保存函数
+let saveTimeout: number | null = null
+const debouncedSave = (data: Task[]) => {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout)
+  }
+  saveTimeout = setTimeout(() => {
+    try {
+      localStorage.setItem('potato_tasks', JSON.stringify(data))
+    } catch (error) {
+      console.error('保存任务数据失败:', error)
+    }
+  }, 500) // 500ms 防抖
+}
+
 // 加载保存的任务数据或使用默认值
 const loadTasks = (): Task[] => {
-  const savedTasks = localStorage.getItem('potato_tasks')
-  return savedTasks ? JSON.parse(savedTasks) : [default_task]
+  try {
+    const savedTasks = localStorage.getItem('potato_tasks')
+    return savedTasks ? JSON.parse(savedTasks) : [default_task]
+  } catch (error) {
+    console.error('加载任务数据失败:', error)
+    return [default_task]
+  }
 }
 
 // 全局任务列表
 const tasks = ref<Task[]>(loadTasks())
 
-// 监听任务变化，保存到localStorage
+// 监听任务变化，防抖保存到localStorage
 watch(
   tasks,
   (newTasks) => {
-    localStorage.setItem('potato_tasks', JSON.stringify(newTasks))
+    debouncedSave(newTasks)
   },
   { deep: true },
 )
 
-// 在窗口关闭或刷新前保存数据
-window.addEventListener('beforeunload', () => {
-  localStorage.setItem('potato_tasks', JSON.stringify(tasks.value))
-})
+// 提供给子组件的方法
+const appMethods = {
+  task_start: (task: Task, infinite: boolean) => {
+    console.log('Task 全部信息:', JSON.stringify(task, null, 2))
 
-const task_start = (task: Task, infinite : boolean) => {
-  console.log('Task 全部信息:', JSON.stringify(task, null, 2))
-
-  clockRef.value?.setConfig({ task: task, infinite: infinite })
-  transitionRef.value?.transitionTo('right', 2)
-  clockRef.value?.resetTimer()
-}
-
-const task_quit = (task: Task) => {
-  //check complete
-  if (task.progress == task.cycleList.length - 1) {
-    //complete
-    console.log('complete')
-    transitionRef.value?.transitionTo('left', 1)
-  } else {
-    //quit
-    console.log('quit')
-    transitionRef.value?.transitionTo('left', 1)
+    clockRef.value?.setConfig({ task: task, infinite: infinite })
+    transitionRef.value?.transitionTo('right', 2)
+    clockRef.value?.resetTimer()
+  },
+  task_quit: (task: Task) => {
+    //check complete
+    if (task.progress == task.cycleList.length - 1) {
+      //complete
+      console.log('complete')
+      transitionRef.value?.transitionTo('left', 1)
+    } else {
+      //quit
+      console.log('quit')
+      transitionRef.value?.transitionTo('left', 1)
+    }
+  },
+  restartClock: () => {
+    clockKey.value++
   }
-
-  // 保存当前状态
-  localStorage.setItem('potato_tasks', JSON.stringify(tasks.value))
 }
 
-function restartClock() {
-  clockKey.value++
-}
+// 使用 provide 提供方法给子组件
+provide('appMethods', appMethods)
 
 // onMounted(() => {
 //   transitionRef.value?.transitionTo('right', 1)
@@ -75,10 +91,10 @@ function restartClock() {
       <NintendoSwitchTransition ref="transitionRef" class="full-screen" :slotCount="5">
         <template #slot1>
           <!-- 修改：通过 v-model:tasks 双向绑定任务 -->
-          <misson_l v-model:tasks="tasks" @taskClick="task_start" />
+          <misson_l v-model:tasks="tasks" />
         </template>
         <template #slot2>
-          <potato_clock ref="clockRef" @quit="task_quit" />
+          <potato_clock ref="clockRef" />
         </template>
         <template #slot3>
           <hover_card style="height: 100%" />
