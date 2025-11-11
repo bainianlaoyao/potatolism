@@ -10,7 +10,10 @@ export interface Task {
   progress: number
   deadline: number | null
   completed: boolean,
-  time_up: boolean
+  time_up: boolean,
+  urgent: boolean,
+  important: boolean,
+  description?: string
 }
 export const default_task:Task = {
   id: Date.now(),
@@ -21,7 +24,10 @@ export const default_task:Task = {
   completed: false,
   cycleList: [[25, 'focus'], [5, 'rest'],[25, 'focus'], [5, 'rest'],[100, 'end']],
   progress: 0,
-  time_up: false
+  time_up: false,
+  urgent: false,
+  important: false,
+  description: ''
 }
 export const infinite_task:Task = {
   id: Date.now(),
@@ -32,5 +38,8 @@ export const infinite_task:Task = {
   completed: false,
   cycleList: [[50, 'focus'], [10, 'rest'],[25, 'focus'], [5, 'rest']],
   progress: 0,
-  time_up: false
+  time_up: false,
+  urgent: false,
+  important: false,
+  description: ''
 }

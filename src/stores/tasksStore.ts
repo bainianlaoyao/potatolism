@@ -74,6 +74,8 @@ export const useTasksStore = defineStore('tasks', () => {
     estimatedTime: number
     deadline: number | null
     longCycle: boolean
+    urgent?: boolean
+    important?: boolean
   }) => {
     const task: Task = {
       id: Date.now(),
@@ -85,6 +87,8 @@ export const useTasksStore = defineStore('tasks', () => {
       progress: 0,
       time_up: false,
       longCycle: taskData.longCycle,
+      urgent: taskData.urgent || false,
+      important: taskData.important || false,
     }
 
     // 生成番茄钟周期

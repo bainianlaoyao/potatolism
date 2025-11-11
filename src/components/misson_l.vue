@@ -32,9 +32,19 @@
               <n-thing>
                 <template #header>
                   <n-h3 prefix="bar" align-text>
-                    <n-text type="">
-                      {{ task.name }}
-                    </n-text>
+                    <n-space align="center" justify="space-between">
+                      <n-text type="">
+                        {{ task.name }}
+                      </n-text>
+                      <n-space v-if="task.urgent || task.important" :size="4">
+                        <n-tag v-if="task.urgent" type="error" size="small" round>
+                          紧急
+                        </n-tag>
+                        <n-tag v-if="task.important" type="warning" size="small" round>
+                          重要
+                        </n-tag>
+                      </n-space>
+                    </n-space>
                   </n-h3>
                 </template>
                 <template #default>
@@ -45,6 +55,10 @@
                     <span class="task-deadline" v-if="task.deadline">{{
                       formatDate(task.deadline)
                     }}</span>
+
+                    <n-flex v-if="task.description && task.description.trim()" class="task-description">
+                      <n-text depth="3" italic>{{ task.description }}</n-text>
+                    </n-flex>
 
                     <n-flex :size="3">
                       <span
@@ -143,6 +157,28 @@
           </n-space>
         </n-form-item>
 
+        <n-form-item label="任务属性">
+          <n-space align="center" justify="space-between">
+            <n-space align="center">
+              <span>紧急</span>
+              <n-switch v-model:value="newTask.urgent" />
+            </n-space>
+            <n-space align="center">
+              <span>重要</span>
+              <n-switch v-model:value="newTask.important" />
+            </n-space>
+          </n-space>
+        </n-form-item>
+
+        <n-form-item label="详细描述" path="description">
+          <n-input
+            v-model:value="newTask.description"
+            type="textarea"
+            placeholder="请输入任务详细描述（可选）"
+            :rows="3"
+          />
+        </n-form-item>
+
         <n-space justify="end">
           <n-button @click="showModal = false">取消</n-button>
           <n-button type="primary" @click="addTask">确认</n-button>
@@ -183,6 +219,28 @@
           </n-space>
         </n-form-item>
 
+        <n-form-item label="任务属性">
+          <n-space align="center" justify="space-between">
+            <n-space align="center">
+              <span>紧急</span>
+              <n-switch v-model:value="editingTask.urgent" />
+            </n-space>
+            <n-space align="center">
+              <span>重要</span>
+              <n-switch v-model:value="editingTask.important" />
+            </n-space>
+          </n-space>
+        </n-form-item>
+
+        <n-form-item label="详细描述" path="description">
+          <n-input
+            v-model:value="editingTask.description"
+            type="textarea"
+            placeholder="请输入任务详细描述（可选）"
+            :rows="3"
+          />
+        </n-form-item>
+
         <n-space justify="end">
           <n-button @click="showEditModal = false">取消</n-button>
           <n-button type="primary" @click="updateTask">保存</n-button>
@@ -213,6 +271,7 @@ import {
   NFlex,
   NH3,
   NSwitch,
+  NTag,
 } from 'naive-ui'
 import { AddOutline, CheckmarkOutline, SettingsOutline } from '@vicons/ionicons5'
 import { infinite_task, type CycleItem, type Task } from '@/utils/share_type'
@@ -251,6 +310,9 @@ interface NewTask {
   estimatedTime: number
   deadline: number | null
   longCycle: boolean
+  urgent: boolean
+  important: boolean
+  description: string
 }
 
 // 获取当天23:59的时间戳
@@ -265,6 +327,9 @@ const newTask = reactive<NewTask>({
   estimatedTime: 1,
   deadline: getTodayEndTime(), // 默认设置为当天23:59
   longCycle: false, // 默认使用25/5模式
+  urgent: false,
+  important: false,
+  description: '',
 })
 
 // 新增：补充 form 的校验规则
@@ -304,6 +369,9 @@ const addTask = () => {
       progress: 0,
       time_up: false,
       longCycle: newTask.longCycle,
+      urgent: newTask.urgent,
+      important: newTask.important,
+      description: newTask.description.trim(),
     }
     let min = task.estimatedTime * 60
     const timeArrange: CycleItem[] = []
@@ -337,6 +405,9 @@ const addTask = () => {
     newTask.estimatedTime = 1
     newTask.deadline = getTodayEndTime() // 重置为当天23:59
     newTask.longCycle = false // 重置为默认模式
+    newTask.urgent = false
+    newTask.important = false
+    newTask.description = ''
   } catch (error) {
     console.error('添加任务失败:', error)
     message.error('添加任务失败，请重试')
@@ -432,6 +503,9 @@ const editingTask = reactive<Task>({
   progress: 0,
   time_up: false,
   longCycle: false,
+  urgent: false,
+  important: false,
+  description: '',
 })
 const editingTaskId = ref<number | null>(null)
 
@@ -449,6 +523,9 @@ const SetTaskInfo = (id: number) => {
     editingTask.progress = task.progress
     editingTask.time_up = task.time_up
     editingTask.longCycle = task.longCycle || false // 兼容旧数据
+    editingTask.urgent = task.urgent || false // 兼容旧数据
+    editingTask.important = task.important || false // 兼容旧数据
+    editingTask.description = task.description || '' // 兼容旧数据
 
     showEditModal.value = true
   }
@@ -520,6 +597,9 @@ const updateTask = () => {
           deadline: editingTask.deadline,
           cycleList: cycleList,
           longCycle: editingTask.longCycle,
+          urgent: editingTask.urgent,
+          important: editingTask.important,
+          description: (editingTask.description || '').trim(),
         }
       }
       return task
@@ -726,5 +806,15 @@ const updateTask = () => {
   height: 10px;
   margin-right: 4px;
   border-radius: 2px;
+}
+
+.task-description {
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid #18a058;
+  border-radius: 4px;
+  font-size: 0.9em;
+  line-height: 1.4;
 }
 </style>
