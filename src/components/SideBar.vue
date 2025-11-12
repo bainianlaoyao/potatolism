@@ -66,7 +66,7 @@
             block
             :render-icon="renderInfiniteIcon"
           >
-            <span v-if="!collapsed">♾ 无限模式</span>
+            <span v-if="!collapsed">无限模式</span>
             <span v-else>♾</span>
           </n-button>
         </template>

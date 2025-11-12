@@ -360,6 +360,17 @@ const addTask = () => {
       return
     }
 
+    // 自动检查是否应该设为紧急
+    let autoUrgent = newTask.urgent
+    if (newTask.deadline) {
+      const remainingTime = newTask.deadline - Date.now()
+      const twentyFourHours = 24 * 60 * 60 * 1000
+      if (remainingTime < twentyFourHours && remainingTime > -Infinity) {
+        autoUrgent = true
+        console.log(`🔥 任务 "${newTask.name}" 自动设为紧急 (剩余 ${(remainingTime / (1000 * 60 * 60)).toFixed(2)} 小时)`)
+      }
+    }
+
     const task: Task = {
       id: Date.now(),
       name: newTask.name.trim(),
@@ -370,7 +381,7 @@ const addTask = () => {
       progress: 0,
       time_up: false,
       longCycle: newTask.longCycle,
-      urgent: newTask.urgent,
+      urgent: autoUrgent,
       important: newTask.important,
       description: newTask.description.trim(),
     }
@@ -591,6 +602,23 @@ const updateTask = () => {
           task.time_up = false
         }
 
+        // 自动检查是否应该设为紧急
+        let autoUrgent = editingTask.urgent
+        if (editingTask.deadline) {
+          const remainingTime = editingTask.deadline - Date.now()
+          const twentyFourHours = 24 * 60 * 60 * 1000
+          if (remainingTime < twentyFourHours && remainingTime > -Infinity) {
+            autoUrgent = true
+            console.log(
+              `🔥 任务 "${editingTask.name}" 自动设为紧急 (剩余 ${(remainingTime / (1000 * 60 * 60)).toFixed(2)} 小时)`,
+            )
+          }
+        } else {
+          // 如果移除了截止时间，则取消紧急状态
+          autoUrgent = false
+          console.log(`✅ 任务 "${editingTask.name}" 取消紧急状态（无截止时间）`)
+        }
+
         return {
           ...task,
           name: editingTask.name.trim(),
@@ -598,7 +626,7 @@ const updateTask = () => {
           deadline: editingTask.deadline,
           cycleList: cycleList,
           longCycle: editingTask.longCycle,
-          urgent: editingTask.urgent,
+          urgent: autoUrgent,
           important: editingTask.important,
           description: (editingTask.description || '').trim(),
         }

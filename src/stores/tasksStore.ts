@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import type { Task, CycleItem } from '@/utils/share_type'
 import { default_task, infinite_task } from '@/utils/share_type'
+import { updateTasksUrgency } from '@/utils/taskUrgency'
 
 // Store 热重载支持
 if (import.meta.hot) {
@@ -36,6 +37,8 @@ export const useTasksStore = defineStore('tasks', () => {
       const savedTasks = localStorage.getItem('potato_tasks')
       if (savedTasks) {
         tasks.value = JSON.parse(savedTasks)
+        // 加载后自动更新所有任务的紧急状态
+        tasks.value = updateTasksUrgency(tasks.value)
       } else {
         tasks.value = [default_task]
       }
@@ -93,6 +96,13 @@ export const useTasksStore = defineStore('tasks', () => {
 
     // 生成番茄钟周期
     generateCycleList(task)
+    
+    // 根据截止时间自动设置紧急状态
+    const twentyFourHours = 24 * 60 * 60 * 1000
+    if (task.deadline && task.deadline - Date.now() < twentyFourHours) {
+      task.urgent = true
+    }
+    
     tasks.value = [...tasks.value, task]
     return task
   }
@@ -107,6 +117,16 @@ export const useTasksStore = defineStore('tasks', () => {
     if (updates.estimatedTime !== undefined || updates.longCycle !== undefined) {
       generateCycleList(updatedTask)
       updatedTask.time_up = false
+    }
+
+    // 如果更新了截止时间，自动更新紧急状态
+    if (updates.deadline !== undefined) {
+      const twentyFourHours = 24 * 60 * 60 * 1000
+      if (updatedTask.deadline && updatedTask.deadline - Date.now() < twentyFourHours) {
+        updatedTask.urgent = true
+      } else if (!updatedTask.deadline) {
+        updatedTask.urgent = false
+      }
     }
 
     tasks.value = tasks.value.map((task: Task, index: number) =>
@@ -159,6 +179,11 @@ export const useTasksStore = defineStore('tasks', () => {
     task.cycleList = timeArrange
   }
 
+  // 检查并更新所有任务的紧急状态
+  const checkAndUpdateUrgency = () => {
+    tasks.value = updateTasksUrgency(tasks.value)
+  }
+
   return {
     // 状态
     tasks,
@@ -182,5 +207,8 @@ export const useTasksStore = defineStore('tasks', () => {
     // 数据管理
     saveToLocalStorage,
     loadFromLocalStorage,
+    
+    // 紧急状态管理
+    checkAndUpdateUrgency,
   }
 })

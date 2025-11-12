@@ -7,7 +7,7 @@ import {
   NLayout,
   NLayoutContent,
 } from 'naive-ui'
-import { ref, watch, provide, computed } from 'vue'
+import { ref, watch, provide, computed, onMounted, onBeforeUnmount } from 'vue'
 import potato_clock from './components/potato_clock.vue'
 import misson_l from './components/misson_l.vue'
 import NintendoSwitchTransition from './components/NintendoSwitchTransition.vue'
@@ -15,6 +15,7 @@ import SideBar from './components/SideBar.vue'
 import type { Task } from '@/utils/share_type'
 import { default_task } from '@/utils/share_type'
 import hover_card from './components/hover_card.vue'
+import { updateTasksUrgency } from '@/utils/taskUrgency'
 
 const transitionRef = ref<InstanceType<typeof NintendoSwitchTransition>>()
 const clockRef = ref<InstanceType<typeof potato_clock>>()
@@ -81,7 +82,12 @@ const debouncedSave = (data: Task[]) => {
 const loadTasks = (): Task[] => {
   try {
     const savedTasks = localStorage.getItem('potato_tasks')
-    return savedTasks ? JSON.parse(savedTasks) : [default_task]
+    if (savedTasks) {
+      const parsedTasks = JSON.parse(savedTasks)
+      // 加载后自动更新所有任务的紧急状态
+      return updateTasksUrgency(parsedTasks)
+    }
+    return [default_task]
   } catch (error) {
     console.error('加载任务数据失败:', error)
     return [default_task]
@@ -158,6 +164,47 @@ const appMethods = {
 
 // 使用 provide 提供方法给子组件
 provide('appMethods', appMethods)
+
+// 定期检查任务紧急状态
+const checkTasksUrgency = () => {
+  console.log('🔍 检查任务紧急状态...')
+  const oldTasks = JSON.parse(JSON.stringify(tasks.value))
+  tasks.value = updateTasksUrgency(tasks.value)
+  
+  // 记录变化
+  let changedCount = 0
+  tasks.value.forEach((task, index) => {
+    if (task.urgent !== oldTasks[index].urgent) {
+      changedCount++
+      console.log(`  ${task.urgent ? '🔥' : '✅'} "${task.name}" 紧急状态: ${oldTasks[index].urgent} → ${task.urgent}`)
+    }
+  })
+  
+  if (changedCount > 0) {
+    console.log(`✨ ${changedCount} 个任务的紧急状态已更新`)
+  }
+}
+
+// 设置定时器和事件监听
+let urgencyCheckInterval: number | undefined
+
+onMounted(() => {
+  // 每5分钟检查一次任务紧急状态
+  urgencyCheckInterval = setInterval(() => {
+    checkTasksUrgency()
+  }, 5 * 60 * 1000) as unknown as number
+
+  // 当窗口获得焦点时也检查一次
+  window.addEventListener('focus', checkTasksUrgency)
+})
+
+onBeforeUnmount(() => {
+  // 清理定时器和事件监听
+  if (urgencyCheckInterval !== undefined) {
+    clearInterval(urgencyCheckInterval)
+  }
+  window.removeEventListener('focus', checkTasksUrgency)
+})
 
 // onMounted(() => {
 //   transitionRef.value?.transitionTo('right', 1)
