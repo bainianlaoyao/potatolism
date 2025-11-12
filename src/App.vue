@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import { NMessageProvider, NConfigProvider, darkTheme, NGlobalStyle, NLayout, NLayoutContent } from 'naive-ui'
-import { ref, watch, provide } from 'vue'
+import {
+  NMessageProvider,
+  NConfigProvider,
+  darkTheme,
+  NGlobalStyle,
+  NLayout,
+  NLayoutContent,
+} from 'naive-ui'
+import { ref, watch, provide, computed } from 'vue'
 import potato_clock from './components/potato_clock.vue'
 import misson_l from './components/misson_l.vue'
 import NintendoSwitchTransition from './components/NintendoSwitchTransition.vue'
 import SideBar from './components/SideBar.vue'
-import type { Task, CycleItem } from '@/utils/share_type'
+import type { Task } from '@/utils/share_type'
 import { default_task } from '@/utils/share_type'
 import hover_card from './components/hover_card.vue'
 
@@ -40,12 +47,17 @@ const startInfiniteMode = () => {
     longCycle: true,
     deadline: Date.now(),
     completed: false,
-    cycleList: [[50, 'focus'], [10, 'rest'], [25, 'focus'], [5, 'rest']],
+    cycleList: [
+      [50, 'focus'],
+      [10, 'rest'],
+      [25, 'focus'],
+      [5, 'rest'],
+    ],
     progress: 0,
     time_up: false,
     urgent: false,
     important: false,
-    description: ''
+    description: '',
   }
   task_start(infinite_task, true)
 }
@@ -78,6 +90,37 @@ const loadTasks = (): Task[] => {
 
 // 全局任务列表
 const tasks = ref<Task[]>(loadTasks())
+
+// 任务过滤分类
+const selectedTaskCategory = ref('all')
+
+// 过滤后的任务列表
+const filteredTasks = computed(() => {
+  if (selectedTaskCategory.value === 'all') {
+    return tasks.value
+  }
+
+  return tasks.value.filter((task) => {
+    switch (selectedTaskCategory.value) {
+      case 'urgent-important':
+        return task.urgent && task.important
+      case 'important-not-urgent':
+        return !task.urgent && task.important
+      case 'urgent-not-important':
+        return task.urgent && !task.important
+      case 'not-urgent-not-important':
+        return !task.urgent && !task.important
+      default:
+        return true
+    }
+  })
+})
+
+// 处理过滤变化
+const handleFilterChange = (category: string) => {
+  selectedTaskCategory.value = category
+  console.log('任务分类过滤:', category)
+}
 
 // 监听任务变化，防抖保存到localStorage
 watch(
@@ -132,6 +175,7 @@ provide('appMethods', appMethods)
           :tasks="tasks"
           :show-add-task-modal="showAddTaskModal"
           :start-infinite-mode="startInfiniteMode"
+          @filter-change="handleFilterChange"
         />
 
         <!-- 主内容区域 -->
@@ -143,6 +187,7 @@ provide('appMethods', appMethods)
                 <misson_l
                   ref="missonLRef"
                   v-model:tasks="tasks"
+                  :filtered-tasks="filteredTasks"
                   :task-start="task_start"
                 />
               </template>

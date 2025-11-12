@@ -24,9 +24,7 @@
                         {{ task.name }}
                       </n-text>
                       <n-space v-if="task.urgent || task.important" :size="4">
-                        <n-tag v-if="task.urgent" type="error" size="small" round>
-                          紧急
-                        </n-tag>
+                        <n-tag v-if="task.urgent" type="error" size="small" round> 紧急 </n-tag>
                         <n-tag v-if="task.important" type="warning" size="small" round>
                           重要
                         </n-tag>
@@ -43,7 +41,10 @@
                       formatDate(task.deadline)
                     }}</span>
 
-                    <n-flex v-if="task.description && task.description.trim()" class="task-description">
+                    <n-flex
+                      v-if="task.description && task.description.trim()"
+                      class="task-description"
+                    >
                       <n-text depth="3" italic>{{ task.description }}</n-text>
                     </n-flex>
 
@@ -267,6 +268,7 @@ import hover_card from './hover_card.vue'
 // Props
 const props = defineProps<{
   tasks: Task[]
+  filteredTasks?: Task[]
   taskStart?: (task: Task, infinite: boolean) => void
 }>()
 
@@ -276,7 +278,7 @@ const emit = defineEmits(['update:tasks'])
 defineExpose({
   showAddTaskModal: () => {
     showModal.value = true
-  }
+  },
 })
 
 // 使用 inject 获取父组件提供的方法
@@ -295,9 +297,10 @@ const tasksModel = computed({
 // 消息提示
 const message = useMessage()
 
-// 修改计算属性，基于 tasksModel 过滤
+// 修改计算属性，优先使用 filteredTasks，否则使用全部任务
 const uncompletedTasks = computed(() => {
-  return tasksModel.value.filter((task) => !task.completed)
+  const sourceTasks = props.filteredTasks || tasksModel.value
+  return sourceTasks.filter((task) => !task.completed)
 })
 
 // 表单相关代码
