@@ -8,11 +8,11 @@
     collapse-mode="width"
     :native-scrollbar="false"
     bordered
-    :content-style="{ 
-      display: 'flex', 
-      flexDirection: 'column', 
+    :content-style="{
+      display: 'flex',
+      flexDirection: 'column',
       height: '100%',
-      padding: 0
+      padding: 0,
     }"
   >
     <!-- 边栏展开时的收缩按钮 -->
@@ -149,13 +149,7 @@
       <!-- 关于按钮 -->
       <n-tooltip trigger="hover" placement="right" :disabled="!collapsed">
         <template #trigger>
-          <n-button
-            @click="showAbout"
-            quaternary
-            size="large"
-            block
-            :render-icon="renderHelpIcon"
-          >
+          <n-button @click="showAbout" quaternary size="large" block :render-icon="renderHelpIcon">
             <span v-if="!collapsed">关于</span>
           </n-button>
         </template>
