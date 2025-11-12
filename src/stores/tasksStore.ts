@@ -96,13 +96,13 @@ export const useTasksStore = defineStore('tasks', () => {
 
     // 生成番茄钟周期
     generateCycleList(task)
-    
+
     // 根据截止时间自动设置紧急状态
     const twentyFourHours = 24 * 60 * 60 * 1000
     if (task.deadline && task.deadline - Date.now() < twentyFourHours) {
       task.urgent = true
     }
-    
+
     tasks.value = [...tasks.value, task]
     return task
   }
@@ -207,7 +207,7 @@ export const useTasksStore = defineStore('tasks', () => {
     // 数据管理
     saveToLocalStorage,
     loadFromLocalStorage,
-    
+
     // 紧急状态管理
     checkAndUpdateUrgency,
   }

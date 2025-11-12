@@ -367,7 +367,9 @@ const addTask = () => {
       const twentyFourHours = 24 * 60 * 60 * 1000
       if (remainingTime < twentyFourHours && remainingTime > -Infinity) {
         autoUrgent = true
-        console.log(`🔥 任务 "${newTask.name}" 自动设为紧急 (剩余 ${(remainingTime / (1000 * 60 * 60)).toFixed(2)} 小时)`)
+        console.log(
+          `🔥 任务 "${newTask.name}" 自动设为紧急 (剩余 ${(remainingTime / (1000 * 60 * 60)).toFixed(2)} 小时)`,
+        )
       }
     }
 

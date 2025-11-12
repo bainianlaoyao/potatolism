@@ -46,4 +46,3 @@ export function updateTaskUrgency(task: Task): Task {
 export function updateTasksUrgency(tasks: Task[]): Task[] {
   return tasks.map((task) => updateTaskUrgency(task))
 }
-

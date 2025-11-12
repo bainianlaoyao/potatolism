@@ -27,9 +27,12 @@ let urgencyCheckInterval: number
 
 onMounted(() => {
   // 设置定时器，每5分钟检查一次
-  urgencyCheckInterval = setInterval(() => {
-    tasksStore.checkAndUpdateUrgency()
-  }, 5 * 60 * 1000) // 5分钟
+  urgencyCheckInterval = setInterval(
+    () => {
+      tasksStore.checkAndUpdateUrgency()
+    },
+    5 * 60 * 1000,
+  ) // 5分钟
 })
 
 onBeforeUnmount(() => {
@@ -131,9 +134,11 @@ window.addEventListener('focus', () => {
 检查任务是否应该被标记为紧急。
 
 **参数：**
+
 - `task`: 任务对象
 
 **返回值：**
+
 - `true`: 任务应该被标记为紧急
 - `false`: 任务不应该被标记为紧急
 
@@ -142,9 +147,11 @@ window.addEventListener('focus', () => {
 更新单个任务的紧急状态。
 
 **参数：**
+
 - `task`: 任务对象
 
 **返回值：**
+
 - 更新后的任务对象（包含正确的 `urgent` 状态）
 
 ### `updateTasksUrgency(tasks: Task[]): Task[]`
@@ -152,9 +159,11 @@ window.addEventListener('focus', () => {
 批量更新多个任务的紧急状态。
 
 **参数：**
+
 - `tasks`: 任务数组
 
 **返回值：**
+
 - 更新后的任务数组
 
 ### `checkAndUpdateUrgency()`
@@ -162,6 +171,7 @@ window.addEventListener('focus', () => {
 Store 方法，检查并更新所有任务的紧急状态。
 
 **用法：**
+
 ```typescript
 const tasksStore = useTasksStore()
 tasksStore.checkAndUpdateUrgency()
@@ -176,6 +186,7 @@ npm run test:unit -- src/utils/__tests__/taskUrgency.spec.ts
 ```
 
 测试覆盖了以下场景：
+
 - ✅ 剩余时间 < 24小时 → 标记为紧急
 - ✅ 剩余时间 > 24小时 → 不标记为紧急
 - ✅ 无截止时间 → 不标记为紧急

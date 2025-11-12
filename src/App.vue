@@ -170,16 +170,18 @@ const checkTasksUrgency = () => {
   console.log('🔍 检查任务紧急状态...')
   const oldTasks = JSON.parse(JSON.stringify(tasks.value))
   tasks.value = updateTasksUrgency(tasks.value)
-  
+
   // 记录变化
   let changedCount = 0
   tasks.value.forEach((task, index) => {
     if (task.urgent !== oldTasks[index].urgent) {
       changedCount++
-      console.log(`  ${task.urgent ? '🔥' : '✅'} "${task.name}" 紧急状态: ${oldTasks[index].urgent} → ${task.urgent}`)
+      console.log(
+        `  ${task.urgent ? '🔥' : '✅'} "${task.name}" 紧急状态: ${oldTasks[index].urgent} → ${task.urgent}`,
+      )
     }
   })
-  
+
   if (changedCount > 0) {
     console.log(`✨ ${changedCount} 个任务的紧急状态已更新`)
   }
@@ -190,9 +192,12 @@ let urgencyCheckInterval: number | undefined
 
 onMounted(() => {
   // 每5分钟检查一次任务紧急状态
-  urgencyCheckInterval = setInterval(() => {
-    checkTasksUrgency()
-  }, 5 * 60 * 1000) as unknown as number
+  urgencyCheckInterval = setInterval(
+    () => {
+      checkTasksUrgency()
+    },
+    5 * 60 * 1000,
+  ) as unknown as number
 
   // 当窗口获得焦点时也检查一次
   window.addEventListener('focus', checkTasksUrgency)
