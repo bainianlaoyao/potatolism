@@ -1,15 +1,54 @@
 <script setup lang="ts">
-import { NMessageProvider, NConfigProvider, darkTheme, NGlobalStyle } from 'naive-ui'
+import { NMessageProvider, NConfigProvider, darkTheme, NGlobalStyle, NLayout, NLayoutContent } from 'naive-ui'
 import { ref, watch, provide } from 'vue'
 import potato_clock from './components/potato_clock.vue'
 import misson_l from './components/misson_l.vue'
 import NintendoSwitchTransition from './components/NintendoSwitchTransition.vue'
-import type { Task } from '@/utils/share_type'
+import SideBar from './components/SideBar.vue'
+import type { Task, CycleItem } from '@/utils/share_type'
 import { default_task } from '@/utils/share_type'
 import hover_card from './components/hover_card.vue'
+
 const transitionRef = ref<InstanceType<typeof NintendoSwitchTransition>>()
 const clockRef = ref<InstanceType<typeof potato_clock>>()
 const clockKey = ref(0)
+const missonLRef = ref<InstanceType<typeof misson_l>>()
+
+// 任务启动函数 - 供侧边栏调用
+const task_start = (task: Task, infinite: boolean) => {
+  console.log('Task 全部信息:', JSON.stringify(task, null, 2))
+
+  clockRef.value?.setConfig({ task: task, infinite: infinite })
+  transitionRef.value?.transitionTo('right', 2)
+  clockRef.value?.resetTimer()
+}
+
+// 侧边栏相关方法
+const showAddTaskModal = () => {
+  // 触发添加任务模态框 - 直接调用 misson_l 组件的方法
+  console.log('显示添加任务模态框')
+  missonLRef.value?.showAddTaskModal()
+}
+
+const startInfiniteMode = () => {
+  // 启动无限模式
+  console.log('启动无限模式')
+  const infinite_task: Task = {
+    id: Date.now(),
+    name: 'infinite',
+    estimatedTime: 1,
+    longCycle: true,
+    deadline: Date.now(),
+    completed: false,
+    cycleList: [[50, 'focus'], [10, 'rest'], [25, 'focus'], [5, 'rest']],
+    progress: 0,
+    time_up: false,
+    urgent: false,
+    important: false,
+    description: ''
+  }
+  task_start(infinite_task, true)
+}
 
 // 防抖保存函数
 let saveTimeout: number | null = null
@@ -49,30 +88,29 @@ watch(
   { deep: true },
 )
 
+// 其他方法
+const task_quit = (task: Task) => {
+  //check complete
+  if (task.progress == task.cycleList.length - 1) {
+    //complete
+    console.log('complete')
+    transitionRef.value?.transitionTo('left', 1)
+  } else {
+    //quit
+    console.log('quit')
+    transitionRef.value?.transitionTo('left', 1)
+  }
+}
+
+const restartClock = () => {
+  clockKey.value++
+}
+
 // 提供给子组件的方法
 const appMethods = {
-  task_start: (task: Task, infinite: boolean) => {
-    console.log('Task 全部信息:', JSON.stringify(task, null, 2))
-
-    clockRef.value?.setConfig({ task: task, infinite: infinite })
-    transitionRef.value?.transitionTo('right', 2)
-    clockRef.value?.resetTimer()
-  },
-  task_quit: (task: Task) => {
-    //check complete
-    if (task.progress == task.cycleList.length - 1) {
-      //complete
-      console.log('complete')
-      transitionRef.value?.transitionTo('left', 1)
-    } else {
-      //quit
-      console.log('quit')
-      transitionRef.value?.transitionTo('left', 1)
-    }
-  },
-  restartClock: () => {
-    clockKey.value++
-  },
+  task_start,
+  task_quit,
+  restartClock,
 }
 
 // 使用 provide 提供方法给子组件
@@ -88,45 +126,54 @@ provide('appMethods', appMethods)
   <n-config-provider :theme="darkTheme">
     <!-- 新增：使用暗黑主题 -->
     <n-message-provider>
-      <NintendoSwitchTransition ref="transitionRef" class="full-screen" :slotCount="5">
-        <template #slot1>
-          <!-- 修改：通过 v-model:tasks 双向绑定任务 -->
-          <misson_l v-model:tasks="tasks" />
-        </template>
-        <template #slot2>
-          <potato_clock ref="clockRef" />
-        </template>
-        <template #slot3>
-          <hover_card style="height: 100%" />
-        </template>
-        <!-- <potato_clock  /> -->
-        <!-- <misson_list /> -->
-        <!-- <misson_l /> -->
-      </NintendoSwitchTransition>
+      <n-layout has-sider class="app-layout">
+        <!-- 左侧边栏 -->
+        <SideBar
+          :tasks="tasks"
+          :show-add-task-modal="showAddTaskModal"
+          :start-infinite-mode="startInfiniteMode"
+        />
+
+        <!-- 主内容区域 -->
+        <n-layout>
+          <n-layout-content class="main-content">
+            <NintendoSwitchTransition ref="transitionRef" class="full-screen" :slotCount="5">
+              <template #slot1>
+                <!-- 修改：通过 v-model:tasks 双向绑定任务，添加事件监听器 -->
+                <misson_l
+                  ref="missonLRef"
+                  v-model:tasks="tasks"
+                  :task-start="task_start"
+                />
+              </template>
+              <template #slot2>
+                <potato_clock ref="clockRef" />
+              </template>
+              <template #slot3>
+                <hover_card style="height: 100%" />
+              </template>
+              <!-- <potato_clock  /> -->
+              <!-- <misson_list /> -->
+              <!-- <misson_l /> -->
+            </NintendoSwitchTransition>
+          </n-layout-content>
+        </n-layout>
+      </n-layout>
     </n-message-provider>
     <NGlobalStyle />
   </n-config-provider>
-  <!-- <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
-  </header>
-
-  <RouterView /> -->
 </template>
 
 <style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
+.app-layout {
+  height: 100vh;
 }
+
+.main-content {
+  background: rgba(18, 18, 18, 1);
+  height: 100vh;
+}
+
 .full-screen {
   height: 100vh;
   display: flex;
@@ -134,6 +181,23 @@ header {
   justify-content: center;
   align-items: center;
 }
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .app-layout {
+    position: relative;
+  }
+
+  .main-content {
+    margin-left: 0;
+  }
+}
+
+header {
+  line-height: 1.5;
+  max-height: 100vh;
+}
+
 .logo {
   display: block;
   margin: 0 auto 2rem;

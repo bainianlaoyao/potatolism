@@ -1,23 +1,10 @@
 <template>
-  <div class="todo-app">
+  <div class="todo-app" @show-add-task-modal="onShowAddTaskModal">
     <!-- 主内容区 -->
     <div class="main-content">
       <div class="list-header">
         <div class="list-title"><span class="emoji">👋</span> 任务列表</div>
       </div>
-
-      <!-- 添加任务按钮移到这里 -->
-      <n-button @click="showModal = true" type="info" :style="[cardStyle, { margin: '8px auto' }]">
-        <n-icon :size="20"><add-outline /></n-icon>
-      </n-button>
-
-      <n-button
-        @click="onTaskClick(infinite_task, true)"
-        type="error"
-        :style="[cardStyle, { margin: '8px auto' }]"
-      >
-        ♾ infinite
-      </n-button>
 
       <!-- 未完成任务列表 -->
       <n-infinite-scroll class="task-list">
@@ -251,8 +238,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, inject } from 'vue'
-import { defineEmits, defineProps } from 'vue'
+import { ref, reactive, computed, inject, watch } from 'vue'
+import { defineEmits, defineProps, defineExpose } from 'vue'
 import {
   NButton,
   NSpace,
@@ -273,14 +260,24 @@ import {
   NSwitch,
   NTag,
 } from 'naive-ui'
-import { AddOutline, CheckmarkOutline, SettingsOutline } from '@vicons/ionicons5'
-import { infinite_task, type CycleItem, type Task } from '@/utils/share_type'
+import { CheckmarkOutline, SettingsOutline } from '@vicons/ionicons5'
+import { type CycleItem, type Task } from '@/utils/share_type'
 import hover_card from './hover_card.vue'
-// 修改：使用 v-model 传入 tasks
+
+// Props
 const props = defineProps<{
   tasks: Task[]
+  taskStart?: (task: Task, infinite: boolean) => void
 }>()
+
 const emit = defineEmits(['update:tasks'])
+
+// 暴露方法给父组件调用
+defineExpose({
+  showAddTaskModal: () => {
+    showModal.value = true
+  }
+})
 
 // 使用 inject 获取父组件提供的方法
 const appMethods = inject<{
@@ -288,6 +285,7 @@ const appMethods = inject<{
   task_quit: (task: Task) => void
   restartClock: () => void
 }>('appMethods')
+
 // 定义双向绑定 tasks
 const tasksModel = computed({
   get: () => props.tasks,
