@@ -21,8 +21,11 @@
     "@vicons/antd": "^0.13.0",
     "@vicons/carbon": "^0.13.0",
     "@vicons/ionicons5": "^0.13.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
     "howler": "^2.2.4",
     "pinia": "^3.0.1",
+    "sqlite3": "^5.1.7",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },

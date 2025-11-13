@@ -15,6 +15,8 @@ import SideBar from './components/SideBar.vue'
 import type { Task } from '@/utils/share_type'
 import hover_card from './components/hover_card.vue'
 import { useTasksStore } from '@/stores/tasksStore'
+import SettingsView from './views/SettingsView.vue'
+import AboutView from './views/AboutView.vue'
 
 const tasksStore = useTasksStore()
 
@@ -80,7 +82,10 @@ const handleFilterChange = (category: string) => {
 // 其他方法
 const task_quit = (task: Task) => {
   // 使用统一的store方法检查任务完成状态
-  const updatedTask = tasksStore.updateTaskTimeStatus(task.id, task.progress >= task.cycleList.length - 1)
+  const updatedTask = tasksStore.updateTaskTimeStatus(
+    task.id,
+    task.progress >= task.cycleList.length - 1,
+  )
 
   if (updatedTask?.time_up) {
     //complete
@@ -102,6 +107,9 @@ const appMethods = {
   task_start,
   task_quit,
   restartClock,
+  showSettings: () => transitionRef.value?.transitionTo('right', 4),
+  showAbout: () => transitionRef.value?.transitionTo('down', 5),
+  showHome: () => transitionRef.value?.transitionTo('left', 1),
 }
 
 // 使用 provide 提供方法给子组件
@@ -178,6 +186,12 @@ onBeforeUnmount(() => {
               </template>
               <template #slot3>
                 <hover_card style="height: 100%" />
+              </template>
+              <template #slot4>
+                <SettingsView />
+              </template>
+              <template #slot5>
+                <AboutView />
               </template>
               <!-- <potato_clock  /> -->
               <!-- <misson_list /> -->

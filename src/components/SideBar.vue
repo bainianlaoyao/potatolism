@@ -34,7 +34,14 @@
     <n-space
       justify="center"
       align="center"
-      style="padding: 16px; border-bottom: 1px solid var(--n-border-color); flex-shrink: 0"
+      style="
+        padding: 16px;
+        border-bottom: 1px solid var(--n-border-color);
+        flex-shrink: 0;
+        cursor: pointer;
+        user-select: none;
+      "
+      @click="goHome"
     >
       <span v-if="!collapsed" style="font-size: 18px; font-weight: 600">🍅 番茄主义</span>
       <span v-else style="font-size: 24px">🍅</span>
@@ -175,7 +182,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h } from 'vue'
+import { ref, computed, h, inject } from 'vue'
 import {
   NLayoutSider,
   NButton,
@@ -188,6 +195,15 @@ import {
   NSpace,
 } from 'naive-ui'
 import type { Task } from '@/utils/share_type'
+
+// 通过 provide/inject 获取 App 提供的方法以进行页面切换
+type AppMethods = {
+  showSettings?: () => void
+  showAbout?: () => void
+  showHome?: () => void
+}
+
+const appMethods = inject<AppMethods>('appMethods')
 
 // Props
 const props = defineProps<{
@@ -315,13 +331,16 @@ const renderHelpIcon = () => {
 
 // 方法
 const showSettings = () => {
-  console.log('显示设置')
-  // TODO: 实现设置功能
+  // 使用 App 提供的方法在 NintendoSwitchTransition 中切换到设置页
+  appMethods?.showSettings?.()
 }
 
 const showAbout = () => {
-  console.log('显示关于')
-  // TODO: 实现关于功能
+  appMethods?.showAbout?.()
+}
+
+const goHome = () => {
+  appMethods?.showHome?.()
 }
 </script>
 
