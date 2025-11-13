@@ -89,8 +89,11 @@ import { NButton, NSpace, NProgress, NH1 } from 'naive-ui'
 import VueCountdown from '@chenfengyuan/vue-countdown'
 import type { Task } from '@/utils/share_type'
 import { default_task } from '@/utils/share_type'
+import { useTasksStore } from '@/stores/tasksStore'
 // import { defineEmits, defineExpose } from 'vue'
 // 删除原 props 定义，使用 config 代替
+
+const tasksStore = useTasksStore()
 
 const config = reactive({
   task: default_task as Task,
@@ -169,15 +172,24 @@ const nextStage = async () => {
   if (config.task.progress == config.task.cycleList.length - 1) {
     return
   }
+
   if (config.infinite) {
     // 无限模式下在 focus 和 rest 之间切换
-    config.task.progress = config.task.progress === 0 ? 1 : 0
+    const newProgress = config.task.progress === 0 ? 1 : 0
+    tasksStore.updateTaskProperty(config.task.id, 'progress', newProgress)
+    config.task.progress = newProgress // 同步本地状态
+
     // 播放新阶段开始的声音
-    await playSound(config.task.progress === 0 ? 'focus' : 'rest')
+    await playSound(newProgress === 0 ? 'focus' : 'rest')
   } else {
-    config.task.progress++
-    if (config.task.progress == config.task.cycleList.length - 1) {
-      config.task.time_up = true
+    const newProgress = config.task.progress + 1
+    tasksStore.updateTaskProperty(config.task.id, 'progress', newProgress)
+    config.task.progress = newProgress // 同步本地状态
+
+    if (newProgress == config.task.cycleList.length - 1) {
+      tasksStore.updateTaskProperty(config.task.id, 'time_up', true)
+      config.task.time_up = true // 同步本地状态
+
       await playSound('complete')
       appMethods?.task_quit(config.task)
       console.log('Cycle complete!')
@@ -188,7 +200,7 @@ const nextStage = async () => {
     isRunning.value = true
 
     // 根据当前阶段标签播放相应的声音
-    const nextModeLabel = config.task.cycleList[config.task.progress][1].toLowerCase()
+    const nextModeLabel = config.task.cycleList[newProgress][1].toLowerCase()
     if (nextModeLabel.includes('focus')) {
       await playSound('focus')
     } else if (nextModeLabel.includes('rest')) {

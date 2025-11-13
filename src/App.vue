@@ -7,15 +7,16 @@ import {
   NLayout,
   NLayoutContent,
 } from 'naive-ui'
-import { ref, watch, provide, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, provide, computed, onMounted, onBeforeUnmount } from 'vue'
 import potato_clock from './components/potato_clock.vue'
 import misson_l from './components/misson_l.vue'
 import NintendoSwitchTransition from './components/NintendoSwitchTransition.vue'
 import SideBar from './components/SideBar.vue'
 import type { Task } from '@/utils/share_type'
-import { default_task } from '@/utils/share_type'
 import hover_card from './components/hover_card.vue'
-import { updateTasksUrgency } from '@/utils/taskUrgency'
+import { useTasksStore } from '@/stores/tasksStore'
+
+const tasksStore = useTasksStore()
 
 const transitionRef = ref<InstanceType<typeof NintendoSwitchTransition>>()
 const clockRef = ref<InstanceType<typeof potato_clock>>()
@@ -41,72 +42,20 @@ const showAddTaskModal = () => {
 const startInfiniteMode = () => {
   // 启动无限模式
   console.log('启动无限模式')
-  const infinite_task: Task = {
-    id: Date.now(),
-    name: 'infinite',
-    estimatedTime: 1,
-    longCycle: true,
-    deadline: Date.now(),
-    completed: false,
-    cycleList: [
-      [50, 'focus'],
-      [10, 'rest'],
-      [25, 'focus'],
-      [5, 'rest'],
-    ],
-    progress: 0,
-    time_up: false,
-    urgent: false,
-    important: false,
-    description: '',
-  }
-  task_start(infinite_task, true)
+  const infiniteTask = tasksStore.getInfiniteTask()
+  task_start(infiniteTask, true)
 }
-
-// 防抖保存函数
-let saveTimeout: number | null = null
-const debouncedSave = (data: Task[]) => {
-  if (saveTimeout) {
-    clearTimeout(saveTimeout)
-  }
-  saveTimeout = setTimeout(() => {
-    try {
-      localStorage.setItem('potato_tasks', JSON.stringify(data))
-    } catch (error) {
-      console.error('保存任务数据失败:', error)
-    }
-  }, 500) // 500ms 防抖
-}
-
-// 加载保存的任务数据或使用默认值
-const loadTasks = (): Task[] => {
-  try {
-    const savedTasks = localStorage.getItem('potato_tasks')
-    if (savedTasks) {
-      const parsedTasks = JSON.parse(savedTasks)
-      // 加载后自动更新所有任务的紧急状态
-      return updateTasksUrgency(parsedTasks)
-    }
-    return [default_task]
-  } catch (error) {
-    console.error('加载任务数据失败:', error)
-    return [default_task]
-  }
-}
-
-// 全局任务列表
-const tasks = ref<Task[]>(loadTasks())
 
 // 任务过滤分类
 const selectedTaskCategory = ref('all')
 
-// 过滤后的任务列表
+// 过滤后的任务列表 - 使用store中的tasks
 const filteredTasks = computed(() => {
   if (selectedTaskCategory.value === 'all') {
-    return tasks.value
+    return tasksStore.tasks
   }
 
-  return tasks.value.filter((task) => {
+  return tasksStore.tasks.filter((task) => {
     switch (selectedTaskCategory.value) {
       case 'urgent-important':
         return task.urgent && task.important
@@ -128,19 +77,12 @@ const handleFilterChange = (category: string) => {
   console.log('任务分类过滤:', category)
 }
 
-// 监听任务变化，防抖保存到localStorage
-watch(
-  tasks,
-  (newTasks) => {
-    debouncedSave(newTasks)
-  },
-  { deep: true },
-)
-
 // 其他方法
 const task_quit = (task: Task) => {
-  //check complete
-  if (task.progress == task.cycleList.length - 1) {
+  // 使用统一的store方法检查任务完成状态
+  const updatedTask = tasksStore.updateTaskTimeStatus(task.id, task.progress >= task.cycleList.length - 1)
+
+  if (updatedTask?.time_up) {
     //complete
     console.log('complete')
     transitionRef.value?.transitionTo('left', 1)
@@ -168,29 +110,17 @@ provide('appMethods', appMethods)
 // 定期检查任务紧急状态
 const checkTasksUrgency = () => {
   console.log('🔍 检查任务紧急状态...')
-  const oldTasks = JSON.parse(JSON.stringify(tasks.value))
-  tasks.value = updateTasksUrgency(tasks.value)
-
-  // 记录变化
-  let changedCount = 0
-  tasks.value.forEach((task, index) => {
-    if (task.urgent !== oldTasks[index].urgent) {
-      changedCount++
-      console.log(
-        `  ${task.urgent ? '🔥' : '✅'} "${task.name}" 紧急状态: ${oldTasks[index].urgent} → ${task.urgent}`,
-      )
-    }
-  })
-
-  if (changedCount > 0) {
-    console.log(`✨ ${changedCount} 个任务的紧急状态已更新`)
-  }
+  tasksStore.checkAndUpdateUrgency()
+  console.log('✨ 任务紧急状态检查完成')
 }
 
 // 设置定时器和事件监听
 let urgencyCheckInterval: number | undefined
 
 onMounted(() => {
+  // 初始化store
+  tasksStore.initializeStore()
+
   // 每5分钟检查一次任务紧急状态
   urgencyCheckInterval = setInterval(
     () => {
@@ -224,7 +154,7 @@ onBeforeUnmount(() => {
       <n-layout has-sider class="app-layout">
         <!-- 左侧边栏 -->
         <SideBar
-          :tasks="tasks"
+          :tasks="tasksStore.tasks"
           :show-add-task-modal="showAddTaskModal"
           :start-infinite-mode="startInfiniteMode"
           @filter-change="handleFilterChange"
@@ -238,7 +168,7 @@ onBeforeUnmount(() => {
                 <!-- 修改：通过 v-model:tasks 双向绑定任务，添加事件监听器 -->
                 <misson_l
                   ref="missonLRef"
-                  v-model:tasks="tasks"
+                  v-model:tasks="tasksStore.tasks"
                   :filtered-tasks="filteredTasks"
                   :task-start="task_start"
                 />

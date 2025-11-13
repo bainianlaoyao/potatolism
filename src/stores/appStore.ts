@@ -39,7 +39,7 @@ export const useAppStore = defineStore('app', () => {
     saveToStorage()
   }
 
-  const updateTask = (id: number, updates: Partial<Task>) => {
+  const updateTask = (id: string, updates: Partial<Task>) => {
     const index = tasks.value.findIndex(task => task.id === id)
     if (index !== -1) {
       tasks.value[index] = { ...tasks.value[index], ...updates }
@@ -47,7 +47,7 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  const deleteTask = (id: number) => {
+  const deleteTask = (id: string) => {
     const index = tasks.value.findIndex(task => task.id === id)
     if (index !== -1) {
       tasks.value.splice(index, 1)
@@ -55,7 +55,7 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  const getTask = (id: number): Task | undefined => {
+  const getTask = (id: string): Task | undefined => {
     return tasks.value.find(task => task.id === id)
   }
 

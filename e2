@@ -1,0 +1,139 @@
+import { test, expect } from '@playwright/test'
+
+test.describe('UUID和时间戳更新验证', () => {
+  test('应该在浏览器中验证UUID生成功能', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForSelector('text=任务列表', { timeout: 10000 })
+    
+    // 直接检查页面加载后的localStorage数据
+    const initialData = await page.evaluate(() => {
+      const stored = localStorage.getItem('potato_tasks')
+      return stored ? JSON.parse(stored) : []
+    })
+    
+    console.log('初始数据:', initialData)
+    
+    // 验证UUID格式和类型
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    
+    if (initialData.length > 0) {
+      initialData.forEach((task, index) => {
+        console.log(`任务 ${index + 1}: ID = ${task.id}, 类型 = ${typeof task.id}`)
+        expect(typeof task.id).toBe('string')
+        expect(uuidRegex.test(task.id)).toBe(true)
+        expect(typeof task.timestamp).toBe('number')
+        expect(task.timestamp).toBeGreaterThan(0)
+      })
+    } else {
+      console.log('没有找到现有任务数据，需要手动创建任务进行测试')
+    }
+    
+    // 检查页面元素
+    const taskList = await page.locator('.task-item').count()
+    console.log(`找到 ${taskList} 个任务元素`)
+  })
+
+  test('应该验证localStorage数据持久化', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForSelector('text=任务列表', { timeout: 10000 })
+    
+    // 检查初始数据
+    const beforeData = await page.evaluate(() => {
+      const stored = localStorage.getItem('potato_tasks')
+      return stored ? JSON.parse(stored) : []
+    })
+    
+    console.log('刷新前数据:', beforeData)
+    
+    // 刷新页面
+    await page.reload()
+    await page.waitForSelector('text=任务列表', { timeout: 10000 })
+    
+    // 检查刷新后数据
+    const afterData = await page.evaluate(() => {
+      const stored = localStorage.getItem('potato_tasks')
+      return stored ? JSON.parse(stored) : []
+    })
+    
+    console.log('刷新后数据:', afterData)
+    
+    // 验证数据是否一致
+    expect(afterData.length).toBe(beforeData.length)
+    
+    if (beforeData.length > 0) {
+      beforeData.forEach((beforeTask, index) => {
+        const afterTask = afterData[index]
+        expect(afterTask.id).toBe(beforeTask.id)
+        expect(afterTask.name).toBe(beforeTask.name)
+        expect(afterTask.timestamp).toBe(beforeTask.timestamp)
+      })
+    }
+  })
+
+  test('应该验证Vue应用的响应性', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForSelector('text=任务列表', { timeout: 10000 })
+    
+    // 检查Vue应用是否正确挂载
+    const vueApp = await page.locator('#app').isVisible()
+    expect(vueApp).toBe(true)
+    
+    // 检查任务列表容器是否存在
+    const taskListContainer = await page.locator('.task-list').isVisible()
+    console.log('任务列表容器可见:', taskListContainer)
+    
+    // 检查是否有默认任务
+    const taskItems = await page.locator('.task-item').count()
+    console.log(`找到 ${taskItems} 个任务项`)
+    
+    // 验证页面内容
+    const headerText = await page.locator('text=任务列表').isVisible()
+    expect(headerText).toBe(true)
+  })
+
+  test('应该验证页面交互元素', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForSelector('text=任务列表', { timeout: 10000 })
+    
+    // 检查是否有添加任务按钮（可能需要点击或其他交互）
+    const buttons = await page.locator('button').count()
+    console.log(`找到 ${buttons} 个按钮`)
+    
+    // 尝试查找可能的添加任务按钮
+    const possibleAddButtons = [
+      'button:has-text("新增")',
+      'button:has-text("添加")',
+      'button:has-text("新建")',
+      '[data-testid="add-task"]',
+      '.add-task-button'
+    ]
+    
+    for (const selector of possibleAddButtons) {
+      const button = page.locator(selector)
+      if (await button.isVisible()) {
+        console.log(`找到添加任务按钮: ${selector}`)
+        break
+      }
+    }
+    
+    // 验证页面整体加载状态
+    const pageTitle = await page.title()
+    console.log(`页面标题: ${pageTitle}`)
+    
+    // 检查是否有错误信息
+    const errors = []
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        errors.push(msg.text())
+      }
+    })
+    
+    await page.waitForTimeout(2000) // 等待可能的错误信息
+    
+    if (errors.length > 0) {
+      console.log('页面错误:', errors)
+    } else {
+      console.log('页面没有控制台错误')
+    }
+  })
+})

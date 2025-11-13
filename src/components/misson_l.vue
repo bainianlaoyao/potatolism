@@ -1,5 +1,5 @@
 <template>
-  <div class="todo-app" @show-add-task-modal="onShowAddTaskModal">
+  <div class="todo-app" >
     <!-- 主内容区 -->
     <div class="main-content">
       <div class="list-header">
@@ -239,7 +239,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, inject, watch } from 'vue'
+import { ref, reactive, computed, inject } from 'vue'
 import { defineEmits, defineProps, defineExpose } from 'vue'
 import {
   NButton,
@@ -262,8 +262,9 @@ import {
   NTag,
 } from 'naive-ui'
 import { CheckmarkOutline, SettingsOutline } from '@vicons/ionicons5'
-import { type CycleItem, type Task } from '@/utils/share_type'
+import { type Task } from '@/utils/share_type'
 import hover_card from './hover_card.vue'
+import { useTasksStore } from '@/stores/tasksStore'
 
 // Props
 const props = defineProps<{
@@ -273,6 +274,9 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits(['update:tasks'])
+
+// 使用统一的store
+const tasksStore = useTasksStore()
 
 // 暴露方法给父组件调用
 defineExpose({
@@ -347,7 +351,7 @@ const rules = {
   },
 }
 
-// 修改：添加任务操作，从 tasksModel 更新任务数组（避免直接修改 props）
+// 修改：添加任务操作，使用统一的store方法
 const addTask = () => {
   try {
     // 表单验证
@@ -360,120 +364,59 @@ const addTask = () => {
       return
     }
 
-    // 自动检查是否应该设为紧急
-    let autoUrgent = newTask.urgent
-    if (newTask.deadline) {
-      const remainingTime = newTask.deadline - Date.now()
-      const twentyFourHours = 24 * 60 * 60 * 1000
-      if (remainingTime < twentyFourHours && remainingTime > -Infinity) {
-        autoUrgent = true
-        console.log(
-          `🔥 任务 "${newTask.name}" 自动设为紧急 (剩余 ${(remainingTime / (1000 * 60 * 60)).toFixed(2)} 小时)`,
-        )
-      }
-    }
-
-    const task: Task = {
-      id: Date.now(),
-      name: newTask.name.trim(),
+    // 使用store添加任务
+    const task = tasksStore.addTask({
+      name: newTask.name,
       estimatedTime: newTask.estimatedTime,
       deadline: newTask.deadline,
-      completed: false,
-      cycleList: [],
-      progress: 0,
-      time_up: false,
       longCycle: newTask.longCycle,
-      urgent: autoUrgent,
+      urgent: newTask.urgent,
       important: newTask.important,
-      description: newTask.description.trim(),
-    }
-    let min = task.estimatedTime * 60
-    const timeArrange: CycleItem[] = []
+    })
 
-    // 根据用户选择的模式生成番茄钟周期
-    const focusTime = newTask.longCycle ? 50 : 25
-    const restTime = newTask.longCycle ? 10 : 5
-    const cycleTime = focusTime + restTime
-
-    while (min > 0) {
-      if (min >= cycleTime) {
-        timeArrange.push([focusTime, 'focus'])
-        timeArrange.push([restTime, 'rest'])
-        min -= cycleTime
-      } else if (min >= focusTime) {
-        timeArrange.push([focusTime, 'focus'])
-        timeArrange.push([min - focusTime, 'rest'])
-        min = 0
-      } else {
-        timeArrange.push([min, 'focus'])
-        min = 0
-      }
+    if (task) {
+      // 更新本地任务数组
+      tasksModel.value = [...tasksModel.value, task]
+      message.success('任务添加成功')
+      showModal.value = false
+      // 重置表单
+      newTask.name = ''
+      newTask.estimatedTime = 1
+      newTask.deadline = getTodayEndTime() // 重置为当天23:59
+      newTask.longCycle = false // 重置为默认模式
+      newTask.urgent = false
+      newTask.important = false
+      newTask.description = ''
     }
-    timeArrange.push([0, 'end'])
-    task.cycleList = timeArrange
-    tasksModel.value = [...tasksModel.value, task]
-    message.success('任务添加成功')
-    showModal.value = false
-    // 重置表单
-    newTask.name = ''
-    newTask.estimatedTime = 1
-    newTask.deadline = getTodayEndTime() // 重置为当天23:59
-    newTask.longCycle = false // 重置为默认模式
-    newTask.urgent = false
-    newTask.important = false
-    newTask.description = ''
   } catch (error) {
     console.error('添加任务失败:', error)
     message.error('添加任务失败，请重试')
   }
 }
 
-const toggleTaskStatus = (id: number) => {
+const toggleTaskStatus = (id: string) => {
   try {
-    if (!id || typeof id !== 'number') {
+    if (!id || typeof id !== 'string') {
       message.error('无效的任务ID')
       return
     }
 
-    const taskExists = tasksModel.value.some((task) => task.id === id)
-    if (!taskExists) {
+    const task = tasksModel.value.find((task) => task.id === id)
+    if (!task) {
       message.error('任务不存在')
       return
     }
 
-    const updated = tasksModel.value.map((task) => {
-      if (task.id === id) {
-        return { ...task, completed: !task.completed }
-      }
-      return task
-    })
-    tasksModel.value = updated
-    const target = updated.find((task) => task.id === id)
-    message.info(target?.completed ? '任务已完成' : '任务已重新激活')
+    // 使用store切换任务状态，让store统一管理状态更新
+    const updatedTask = tasksStore.toggleTaskStatus(id)
+
+    if (updatedTask) {
+      // 显示相应状态信息
+      message.info(updatedTask.completed ? '任务已完成' : '任务已重新激活')
+    }
   } catch (error) {
     console.error('切换任务状态失败:', error)
     message.error('切换任务状态失败，请重试')
-  }
-}
-
-const deleteTask = (id: number) => {
-  try {
-    if (!id || typeof id !== 'number') {
-      message.error('无效的任务ID')
-      return
-    }
-
-    const taskExists = tasksModel.value.some((task) => task.id === id)
-    if (!taskExists) {
-      message.error('任务不存在')
-      return
-    }
-
-    tasksModel.value = tasksModel.value.filter((task) => task.id !== id)
-    message.success('任务已删除')
-  } catch (error) {
-    console.error('删除任务失败:', error)
-    message.error('删除任务失败，请重试')
   }
 }
 
@@ -508,7 +451,7 @@ const cardStyle = {
 const showEditModal = ref(false)
 const editFormRef = ref(null)
 const editingTask = reactive<Task>({
-  id: 0,
+  id: '',
   name: '',
   estimatedTime: 1,
   deadline: null,
@@ -520,32 +463,37 @@ const editingTask = reactive<Task>({
   urgent: false,
   important: false,
   description: '',
+  timestamp: Date.now()
 })
-const editingTaskId = ref<number | null>(null)
+const editingTaskId = ref<string | null>(null)
 
-// 实现 SetTaskInfo 函数
-const SetTaskInfo = (id: number) => {
+// 实现 SetTaskInfo 函数 - 改为直接使用传入的任务数据，不修改原始任务
+const SetTaskInfo = (id: string) => {
   const task = tasksModel.value.find((task) => task.id === id)
   if (task) {
-    // 深拷贝任务数据到编辑状态
+    // 深拷贝任务数据到编辑状态，避免直接修改原始任务
     editingTaskId.value = id
-    editingTask.id = task.id
-    editingTask.name = task.name
-    editingTask.estimatedTime = task.estimatedTime
-    editingTask.deadline = task.deadline
-    editingTask.completed = task.completed
-    editingTask.progress = task.progress
-    editingTask.time_up = task.time_up
-    editingTask.longCycle = task.longCycle || false // 兼容旧数据
-    editingTask.urgent = task.urgent || false // 兼容旧数据
-    editingTask.important = task.important || false // 兼容旧数据
-    editingTask.description = task.description || '' // 兼容旧数据
+    Object.assign(editingTask, {
+      id: task.id,
+      name: task.name,
+      estimatedTime: task.estimatedTime,
+      deadline: task.deadline,
+      completed: task.completed,
+      progress: task.progress,
+      time_up: task.time_up,
+      longCycle: task.longCycle || false, // 兼容旧数据
+      urgent: task.urgent || false, // 兼容旧数据
+      important: task.important || false, // 兼容旧数据
+      description: task.description || '', // 兼容旧数据
+      timestamp: task.timestamp || Date.now(),
+      cycleList: [...task.cycleList] // 深拷贝数组
+    })
 
     showEditModal.value = true
   }
 }
 
-// 更新任务函数
+// 更新任务函数 - 使用统一的store方法
 const updateTask = () => {
   try {
     if (!editingTaskId.value) {
@@ -563,83 +511,51 @@ const updateTask = () => {
       return
     }
 
-    const taskExists = tasksModel.value.some((task) => task.id === editingTaskId.value)
-    if (!taskExists) {
+    const task = tasksModel.value.find((task) => task.id === editingTaskId.value)
+    if (!task) {
       message.error('任务不存在')
       return
     }
 
-    // 更新任务，但保留任务完成状态和进度
-    const updatedTasks = tasksModel.value.map((task) => {
-      if (task.id === editingTaskId.value) {
-        // 如果预估时间或番茄钟模式发生变化，需要重新计算 cycleList
-        let cycleList = task.cycleList
-        if (
-          task.estimatedTime !== editingTask.estimatedTime ||
-          task.longCycle !== editingTask.longCycle
-        ) {
-          let min = editingTask.estimatedTime * 60
-          const timeArrange: CycleItem[] = []
-
-          // 根据用户选择的模式生成番茄钟周期
-          const focusTime = editingTask.longCycle ? 50 : 25
-          const restTime = editingTask.longCycle ? 10 : 5
-          const cycleTime = focusTime + restTime
-
-          while (min > 0) {
-            if (min >= cycleTime) {
-              timeArrange.push([focusTime, 'focus'])
-              timeArrange.push([restTime, 'rest'])
-              min -= cycleTime
-            } else if (min >= focusTime) {
-              timeArrange.push([focusTime, 'focus'])
-              timeArrange.push([min - focusTime, 'rest'])
-              min = 0
-            } else {
-              timeArrange.push([min, 'focus'])
-              min = 0
-            }
-          }
-          cycleList = timeArrange.concat([[0, 'end']])
-          task.time_up = false
-        }
-
-        // 自动检查是否应该设为紧急
-        let autoUrgent = editingTask.urgent
-        if (editingTask.deadline) {
-          const remainingTime = editingTask.deadline - Date.now()
-          const twentyFourHours = 24 * 60 * 60 * 1000
-          if (remainingTime < twentyFourHours && remainingTime > -Infinity) {
-            autoUrgent = true
-            console.log(
-              `🔥 任务 "${editingTask.name}" 自动设为紧急 (剩余 ${(remainingTime / (1000 * 60 * 60)).toFixed(2)} 小时)`,
-            )
-          }
-        } else {
-          // 如果移除了截止时间，则取消紧急状态
-          autoUrgent = false
-          console.log(`✅ 任务 "${editingTask.name}" 取消紧急状态（无截止时间）`)
-        }
-
-        return {
-          ...task,
-          name: editingTask.name.trim(),
-          estimatedTime: editingTask.estimatedTime,
-          deadline: editingTask.deadline,
-          cycleList: cycleList,
-          longCycle: editingTask.longCycle,
-          urgent: autoUrgent,
-          important: editingTask.important,
-          description: (editingTask.description || '').trim(),
-        }
+    // 自动检查是否应该设为紧急
+    let autoUrgent = editingTask.urgent
+    if (editingTask.deadline) {
+      const remainingTime = editingTask.deadline - Date.now()
+      const twentyFourHours = 24 * 60 * 60 * 1000
+      if (remainingTime < twentyFourHours && remainingTime > -Infinity) {
+        autoUrgent = true
+        console.log(
+          `🔥 任务 "${editingTask.name}" 自动设为紧急 (剩余 ${(remainingTime / (1000 * 60 * 60)).toFixed(2)} 小时)`,
+        )
       }
-      return task
+    } else {
+      // 如果移除了截止时间，则取消紧急状态
+      autoUrgent = false
+      console.log(`✅ 任务 "${editingTask.name}" 取消紧急状态（无截止时间）`)
+    }
+
+    // 使用store统一更新方法
+    const updatedTask = tasksStore.updateTaskMultiple(editingTaskId.value, {
+      name: editingTask.name.trim(),
+      estimatedTime: editingTask.estimatedTime,
+      deadline: editingTask.deadline,
+      longCycle: editingTask.longCycle,
+      urgent: autoUrgent,
+      important: editingTask.important,
+      description: (editingTask.description || '').trim(),
     })
 
-    tasksModel.value = updatedTasks
-    message.success('任务已更新')
-    showEditModal.value = false
-    editingTaskId.value = null
+    if (updatedTask) {
+      // 更新本地任务数组
+      const updatedTasks = tasksModel.value.map((task) =>
+        task.id === editingTaskId.value ? updatedTask : task
+      )
+      tasksModel.value = updatedTasks
+
+      message.success('任务已更新')
+      showEditModal.value = false
+      editingTaskId.value = null
+    }
   } catch (error) {
     console.error('更新任务失败:', error)
     message.error('更新任务失败，请重试')
