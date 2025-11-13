@@ -5,6 +5,7 @@ type CloudSyncSettings = {
   baseUrl: string
   token: string
   lastSyncTime?: number | null
+  lastToken?: string | null
 }
 
 let syncing = false
@@ -20,6 +21,7 @@ function loadSettings(): CloudSyncSettings {
         baseUrl: String(parsed.baseUrl || ''),
         token: String(parsed.token || ''),
         lastSyncTime: parsed.lastSyncTime ?? null,
+        lastToken: typeof parsed.lastToken === 'string' ? parsed.lastToken : null,
       }
     }
     // 兼容旧/另一路由的设置存储
@@ -32,12 +34,13 @@ function loadSettings(): CloudSyncSettings {
         baseUrl: String(cfg.baseUrl || ''),
         token: String(cfg.token || ''),
         lastSyncTime: cfg.lastSync || null,
+        lastToken: null,
       }
     }
   } catch {
     // ignore
   }
-  return { enabled: false, baseUrl: '', token: '', lastSyncTime: null }
+  return { enabled: false, baseUrl: '', token: '', lastSyncTime: null, lastToken: null }
 }
 
 function saveLastSync(ts: number) {
@@ -63,8 +66,18 @@ function saveLastSync(ts: number) {
   }
 }
 
+function saveLastToken(token: string) {
+  try {
+    const s = loadSettings()
+    const next = { ...s, lastToken: token }
+    localStorage.setItem('cloudSyncSettings', JSON.stringify(next))
+  } catch {
+    // ignore
+  }
+}
+
 export async function performSync(): Promise<boolean> {
-  const { enabled, baseUrl, token } = loadSettings()
+  const { enabled, baseUrl, token, lastToken } = loadSettings()
   if (!enabled) return false
   if (!baseUrl || !token) return false
   if (!navigator.onLine) return false
@@ -73,7 +86,9 @@ export async function performSync(): Promise<boolean> {
   const url = `${baseUrl.replace(/\/$/, '')}/sync`
 
   const store = useTasksStore()
-  const payload = { tasks: store.tasks }
+  const tokenChanged = !!lastToken && lastToken !== token
+  // 当 token 发生变化时，避免把旧 token 下的本地任务上传到新 token，先发空数组获取服务端该 token 下的数据
+  const payload = { tasks: tokenChanged ? [] : store.tasks }
 
   syncing = true
   try {
@@ -92,6 +107,8 @@ export async function performSync(): Promise<boolean> {
       store.tasks = data.tasks
     }
     saveLastSync(Date.now())
+    // 记录本次成功同步所用 token，确保后续切换 token 时不会把旧数据上传到新 token
+    saveLastToken(token)
     return true
   } catch {
     return false

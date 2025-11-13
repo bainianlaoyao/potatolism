@@ -2,13 +2,20 @@ import json
 import os
 import sqlite3
 import time
-from typing import Any, Dict, List, Optional
+import asyncio
+from typing import Any, Dict, List, Optional, Set
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, JSONResponse
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'data.db')
+DB_PATH = os.environ.get('DB_PATH', os.path.join(os.path.dirname(__file__), 'data.db'))
+TOKENS_FILE = os.environ.get('TOKEN_FILE', os.path.join(os.path.dirname(__file__), 'tokens.txt'))
+TOKENS_REFRESH_INTERVAL = int(os.environ.get('TOKEN_REFRESH_SEC', '60'))  # seconds
+DEBUG_SECRET = os.environ.get('CLOUDSYNC_SECRET')  # optional, protects debug endpoints
+
+# In-memory allowed tokens, refreshed every minute from TOKENS_FILE
+_allowed_tokens: Set[str] = set()
 
 app = FastAPI()
 
@@ -108,10 +115,17 @@ def ensure_schema_and_migrate(conn: sqlite3.Connection) -> None:
 
 
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
+    # 1) Ensure DB schema ready
     conn = get_conn()
     ensure_schema_and_migrate(conn)
     conn.close()
+
+    # 2) Load tokens first time and start periodic refresher
+    global _allowed_tokens
+    _allowed_tokens = set(load_tokens_from_file())
+    # Start background refresher
+    asyncio.get_event_loop().create_task(_token_refresher())
 
 
 @app.get('/health', response_class=PlainTextResponse)
@@ -144,6 +158,33 @@ def row_to_task(row: sqlite3.Row) -> Dict[str, Any]:
         'description': row['description'],
         'timestamp': ts_ms,
     }
+
+
+def load_tokens_from_file() -> Set[str]:
+    tokens: Set[str] = set()
+    try:
+        with open(TOKENS_FILE, 'r', encoding='utf-8') as f:
+            for line in f:
+                t = (line or '').strip()
+                if not t or t.startswith('#'):
+                    continue
+                tokens.add(t)
+    except FileNotFoundError:
+        print(f"Token file not found: {TOKENS_FILE}")
+    except Exception as e:
+        print('Failed to read token file:', e)
+    return tokens
+
+
+async def _token_refresher():
+    global _allowed_tokens
+    while True:
+        try:
+            _allowed_tokens = load_tokens_from_file()
+        except Exception as e:
+            # Keep previous tokens on failure
+            print('Token refresh failed:', e)
+        await asyncio.sleep(TOKENS_REFRESH_INTERVAL)
 
 
 def normalize_task_for_db(task: Dict[str, Any], token: str) -> Dict[str, Any]:
@@ -196,6 +237,10 @@ async def sync(request: Request, x_token: Optional[str] = Header(None)):
     token = x_token
     if not token:
         raise HTTPException(status_code=401, detail='Token is required')
+
+    # Validate token against allowed list
+    if token not in _allowed_tokens:
+        raise HTTPException(status_code=401, detail='Invalid token')
 
     body = await request.json()
     client_tasks: List[Dict[str, Any]] = body.get('tasks') or []
@@ -259,6 +304,38 @@ async def sync(request: Request, x_token: Optional[str] = Header(None)):
         raise HTTPException(status_code=500, detail='Internal Server Error')
     finally:
         conn.close()
+
+
+def _require_debug_secret(secret: Optional[str]):
+    if DEBUG_SECRET:
+        if not secret or secret != DEBUG_SECRET:
+            raise HTTPException(status_code=403, detail='Forbidden')
+
+
+@app.get('/debug/token-counts')
+async def debug_token_counts(x_debug_secret: Optional[str] = Header(None)):
+    """Return number of tasks per token for troubleshooting.
+    If CLOUDSYNC_SECRET is set, clients must provide X-Debug-Secret header.
+    """
+    _require_debug_secret(x_debug_secret)
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT token, COUNT(*) as cnt FROM tasks GROUP BY token ORDER BY cnt DESC")
+        rows = cur.fetchall()
+        data = [{"token": r[0], "count": r[1]} for r in rows]
+        return {"data": data}
+    finally:
+        conn.close()
+
+
+@app.get('/debug/allowed-tokens')
+async def debug_allowed_tokens(x_debug_secret: Optional[str] = Header(None)):
+    """Return current allowed token count and a preview for troubleshooting."""
+    _require_debug_secret(x_debug_secret)
+    tokens = sorted(list(_allowed_tokens))
+    preview = tokens[:10]
+    return {"count": len(tokens), "preview": preview}
 
 
 if __name__ == '__main__':

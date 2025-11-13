@@ -20,6 +20,31 @@ See [Vite Configuration Reference](https://vite.dev/config/).
 npm install
 ```
 
+## Backend (FastAPI) and Token Validation
+
+The backend server is implemented with FastAPI under `backend/server.py`.
+
+- Allowed tokens are defined in `backend/tokens.txt`, one token per line.
+- The server reloads this file every 60 seconds. You can update tokens at runtime.
+- You can override locations via environment variables:
+  - `TOKEN_FILE` (default: `backend/tokens.txt`)
+  - `TOKEN_REFRESH_SEC` (default: `60`)
+
+Quick start (Windows PowerShell):
+
+```pwsh
+# Install backend deps (Python 3.10+ recommended)
+pip install -r backend/requirements.txt
+
+# Run the backend
+python .\backend\server.py
+
+# Health check
+curl http://localhost:3000/health
+```
+
+To test sync from the app, set your Cloud Sync base URL to `http://localhost:3000` and token to a value present in `backend/tokens.txt` (for local dev, a default `local-dev-token` is included).
+
 ### Compile and Hot-Reload for Development
 
 ```sh

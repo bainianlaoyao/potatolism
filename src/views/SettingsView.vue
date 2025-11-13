@@ -77,29 +77,61 @@ const syncStatusType = computed(() => {
   return typeMap[syncStatus.value] || 'default';
 });
 
-const SETTINGS_KEY = 'potato_sync_settings';
+// 统一与 utils/cloudSync.ts 的配置来源，避免两个不同的本地存储键导致混乱
+const SETTINGS_KEY = 'cloudSyncSettings';
+
+// 兼容旧键，读写时一并维护，防止已有用户数据丢失
+const LEGACY_SETTINGS_KEY = 'potato_sync_settings';
 
 const saveSettings = () => {
-  const settingsToSave = {
-    syncEnabled: syncEnabled.value,
-    syncConfig: syncConfig.value,
+  // 与 cloudSync.ts 期望的结构保持一致
+  const unified = {
+    enabled: syncEnabled.value,
+    baseUrl: syncConfig.value.baseUrl,
+    token: syncConfig.value.token,
+    lastSyncTime: syncConfig.value.lastSync || null,
   };
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsToSave));
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(unified));
+
+  // 同步写入旧结构，便于回退/兼容
+  const legacy = {
+    syncEnabled: syncEnabled.value,
+    syncConfig: { ...syncConfig.value },
+  };
+  localStorage.setItem(LEGACY_SETTINGS_KEY, JSON.stringify(legacy));
 };
 
 const loadSettings = () => {
-  const saved = localStorage.getItem(SETTINGS_KEY);
-  if (saved) {
+  // 优先读取统一配置
+  const savedUnified = localStorage.getItem(SETTINGS_KEY);
+  if (savedUnified) {
     try {
-      const parsed = JSON.parse(saved);
+      const parsed = JSON.parse(savedUnified);
+      syncEnabled.value = !!parsed.enabled;
+      syncConfig.value = {
+        token: String(parsed.token || ''),
+        baseUrl: String(parsed.baseUrl || 'http://localhost:3000'),
+        lastSync: parsed.lastSyncTime ? Number(parsed.lastSyncTime) : 0,
+      };
+      return;
+    } catch {
+      console.error('加载统一同步设置失败:');
+    }
+  }
+
+  // 回退读取旧结构
+  const savedLegacy = localStorage.getItem(LEGACY_SETTINGS_KEY);
+  if (savedLegacy) {
+    try {
+      const parsed = JSON.parse(savedLegacy);
       syncEnabled.value = parsed.syncEnabled || false;
       syncConfig.value = parsed.syncConfig || {
         token: '',
         baseUrl: 'http://localhost:3000',
         lastSync: 0,
       };
-    } catch (error) {
-      console.error('加载同步设置失败:', error);
+    } catch {
+      console.error('加载旧版同步设置失败:');
     }
   }
 };
@@ -152,7 +184,7 @@ const performSync = async () => {
       syncStatus.value = 'error';
       message.error('同步失败');
     }
-  } catch (error) {
+  } catch {
     syncStatus.value = 'error';
     message.error('网络错误');
   }
@@ -167,9 +199,7 @@ const testConnection = async () => {
   try {
     const response = await fetch(`${syncConfig.value.baseUrl}/health`, {
       method: 'GET',
-      headers: {
-        'X-Token': syncConfig.value.token || 'test',
-      },
+      // /health 不需要认证，避免默认 token 干扰排查
     });
 
     if (response.ok) {
@@ -177,7 +207,7 @@ const testConnection = async () => {
     } else {
       message.error('连接失败');
     }
-  } catch (error) {
+  } catch {
     message.error('网络错误');
   }
 };
