@@ -17,10 +17,7 @@
         </n-form-item>
 
         <n-form-item label="服务器地址">
-          <n-input
-            v-model:value="syncConfig.baseUrl"
-            placeholder="http://localhost:3000"
-          />
+          <n-input v-model:value="syncConfig.baseUrl" placeholder="http://localhost:3000" />
         </n-form-item>
 
         <n-form-item label="同步状态">
@@ -42,20 +39,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { useTasksStore } from '@/stores/tasksStore';
-import { NCard, NFormItem, NSwitch, NInput, NButton, NSpace, NTag, NText, useMessage } from 'naive-ui';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useTasksStore } from '@/stores/tasksStore'
+import {
+  NCard,
+  NFormItem,
+  NSwitch,
+  NInput,
+  NButton,
+  NSpace,
+  NTag,
+  NText,
+  useMessage,
+} from 'naive-ui'
 
-const tasksStore = useTasksStore();
-const message = useMessage();
+const tasksStore = useTasksStore()
+const message = useMessage()
 
-const syncEnabled = ref(false);
+const syncEnabled = ref(false)
 const syncConfig = ref({
   token: '',
   baseUrl: 'http://localhost:3000',
   lastSync: 0,
-});
-const syncStatus = ref('idle'); // idle/syncing/synced/error
+})
+const syncStatus = ref('idle') // idle/syncing/synced/error
 
 const syncStatusText = computed(() => {
   const statusMap: { [key: string]: string } = {
@@ -63,9 +70,9 @@ const syncStatusText = computed(() => {
     syncing: '同步中...',
     synced: '已同步',
     error: '同步失败',
-  };
-  return statusMap[syncStatus.value] || '未知状态';
-});
+  }
+  return statusMap[syncStatus.value] || '未知状态'
+})
 
 const syncStatusType = computed(() => {
   const typeMap: { [key: string]: 'default' | 'warning' | 'success' | 'error' } = {
@@ -73,15 +80,15 @@ const syncStatusType = computed(() => {
     syncing: 'warning',
     synced: 'success',
     error: 'error',
-  };
-  return typeMap[syncStatus.value] || 'default';
-});
+  }
+  return typeMap[syncStatus.value] || 'default'
+})
 
 // 统一与 utils/cloudSync.ts 的配置来源，避免两个不同的本地存储键导致混乱
-const SETTINGS_KEY = 'cloudSyncSettings';
+const SETTINGS_KEY = 'cloudSyncSettings'
 
 // 兼容旧键，读写时一并维护，防止已有用户数据丢失
-const LEGACY_SETTINGS_KEY = 'potato_sync_settings';
+const LEGACY_SETTINGS_KEY = 'potato_sync_settings'
 
 const saveSettings = () => {
   // 与 cloudSync.ts 期望的结构保持一致
@@ -90,79 +97,79 @@ const saveSettings = () => {
     baseUrl: syncConfig.value.baseUrl,
     token: syncConfig.value.token,
     lastSyncTime: syncConfig.value.lastSync || null,
-  };
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(unified));
+  }
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(unified))
 
   // 同步写入旧结构，便于回退/兼容
   const legacy = {
     syncEnabled: syncEnabled.value,
     syncConfig: { ...syncConfig.value },
-  };
-  localStorage.setItem(LEGACY_SETTINGS_KEY, JSON.stringify(legacy));
-};
+  }
+  localStorage.setItem(LEGACY_SETTINGS_KEY, JSON.stringify(legacy))
+}
 
 const loadSettings = () => {
   // 优先读取统一配置
-  const savedUnified = localStorage.getItem(SETTINGS_KEY);
+  const savedUnified = localStorage.getItem(SETTINGS_KEY)
   if (savedUnified) {
     try {
-      const parsed = JSON.parse(savedUnified);
-      syncEnabled.value = !!parsed.enabled;
+      const parsed = JSON.parse(savedUnified)
+      syncEnabled.value = !!parsed.enabled
       syncConfig.value = {
         token: String(parsed.token || ''),
         baseUrl: String(parsed.baseUrl || 'http://localhost:3000'),
         lastSync: parsed.lastSyncTime ? Number(parsed.lastSyncTime) : 0,
-      };
-      return;
+      }
+      return
     } catch {
-      console.error('加载统一同步设置失败:');
+      console.error('加载统一同步设置失败:')
     }
   }
 
   // 回退读取旧结构
-  const savedLegacy = localStorage.getItem(LEGACY_SETTINGS_KEY);
+  const savedLegacy = localStorage.getItem(LEGACY_SETTINGS_KEY)
   if (savedLegacy) {
     try {
-      const parsed = JSON.parse(savedLegacy);
-      syncEnabled.value = parsed.syncEnabled || false;
+      const parsed = JSON.parse(savedLegacy)
+      syncEnabled.value = parsed.syncEnabled || false
       syncConfig.value = parsed.syncConfig || {
         token: '',
         baseUrl: 'http://localhost:3000',
         lastSync: 0,
-      };
+      }
     } catch {
-      console.error('加载旧版同步设置失败:');
+      console.error('加载旧版同步设置失败:')
     }
   }
-};
+}
 
 watch(
   () => [syncEnabled.value, syncConfig.value],
   () => {
-    saveSettings();
+    saveSettings()
   },
-  { deep: true }
-);
+  { deep: true },
+)
 
 onMounted(() => {
-  loadSettings();
+  loadSettings()
   if (syncEnabled.value && syncConfig.value.token) {
-    testConnection();
+    testConnection()
   }
-});
+})
 
 onUnmounted(() => {
-  saveSettings();
-});
+  saveSettings()
+})
 
 const performSync = async () => {
-  if (!syncEnabled.value) return;
+  if (!syncEnabled.value) return
   if (!syncConfig.value.token || !syncConfig.value.baseUrl) {
-    message.warning('请配置同步参数');
-    return;
+    message.warning('请配置同步参数')
+    return
   }
 
-  syncStatus.value = 'syncing';
+  syncStatus.value = 'syncing'
 
   try {
     const response = await fetch(`${syncConfig.value.baseUrl}/sync`, {
@@ -172,62 +179,62 @@ const performSync = async () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ tasks: tasksStore.tasks }),
-    });
+    })
 
     if (response.ok) {
-      const data = await response.json();
-      tasksStore.tasks = data.tasks;
-      syncConfig.value.lastSync = Date.now();
-      syncStatus.value = 'synced';
-      message.success('同步成功');
+      const data = await response.json()
+      tasksStore.tasks = data.tasks
+      syncConfig.value.lastSync = Date.now()
+      syncStatus.value = 'synced'
+      message.success('同步成功')
     } else {
-      syncStatus.value = 'error';
-      message.error('同步失败');
+      syncStatus.value = 'error'
+      message.error('同步失败')
     }
   } catch {
-    syncStatus.value = 'error';
-    message.error('网络错误');
+    syncStatus.value = 'error'
+    message.error('网络错误')
   }
-};
+}
 
 const testConnection = async () => {
   if (!syncConfig.value.baseUrl) {
-    message.warning('请输入服务器地址');
-    return;
+    message.warning('请输入服务器地址')
+    return
   }
 
   try {
     const response = await fetch(`${syncConfig.value.baseUrl}/health`, {
       method: 'GET',
       // /health 不需要认证，避免默认 token 干扰排查
-    });
+    })
 
     if (response.ok) {
-      message.success('连接成功');
+      message.success('连接成功')
     } else {
-      message.error('连接失败');
+      message.error('连接失败')
     }
   } catch {
-    message.error('网络错误');
+    message.error('网络错误')
   }
-};
+}
 
 const generateToken = () => {
-  syncConfig.value.token = 'pt_' + Math.random().toString(36).substring(2, 15);
-  message.success('已生成新Token');
-};
+  syncConfig.value.token = 'pt_' + Math.random().toString(36).substring(2, 15)
+  message.success('已生成新Token')
+}
 
 const formatLastSyncTime = (timestamp: number) => {
-  if (!timestamp) return '从未同步';
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
+  if (!timestamp) return '从未同步'
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
 
-  if (diff < 60000) return '刚刚';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-  return date.toLocaleString('zh-CN');
-};
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
+  return date.toLocaleString('zh-CN')
+}
 </script>
 
 <style scoped>
