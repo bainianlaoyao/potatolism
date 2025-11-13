@@ -97,7 +97,7 @@ test.describe('UUID和时间戳更新验证', () => {
     await page.waitForTimeout(100)
 
     // 编辑第一个任务
-    await page.click('[data-testid="edit-task"]').first()
+    page.click('[data-testid="edit-task"]').first()
 
     // 更改任务名称
     await page.fill('input[placeholder*="任务名称"]', '更新后的时间戳测试任务')

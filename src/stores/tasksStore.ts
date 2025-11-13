@@ -270,7 +270,7 @@ export const useTasksStore = defineStore('tasks', () => {
       }
     }
 
-    timeArrange.push([100, 'end'])
+    timeArrange.push([0, 'end'])
     task.cycleList = timeArrange
   }
 

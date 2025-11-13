@@ -17,6 +17,7 @@ import hover_card from './components/hover_card.vue'
 import { useTasksStore } from '@/stores/tasksStore'
 import SettingsView from './views/SettingsView.vue'
 import AboutView from './views/AboutView.vue'
+import { startAutoSync, stopAutoSync } from '@/utils/cloudSync'
 
 const tasksStore = useTasksStore()
 
@@ -107,7 +108,7 @@ const appMethods = {
   task_start,
   task_quit,
   restartClock,
-  showSettings: () => transitionRef.value?.transitionTo('right', 4),
+  showSettings: () => transitionRef.value?.transitionTo('up', 4),
   showAbout: () => transitionRef.value?.transitionTo('down', 5),
   showHome: () => transitionRef.value?.transitionTo('left', 1),
 }
@@ -139,6 +140,9 @@ onMounted(() => {
 
   // 当窗口获得焦点时也检查一次
   window.addEventListener('focus', checkTasksUrgency)
+
+  // 启动云同步（每秒）
+  startAutoSync()
 })
 
 onBeforeUnmount(() => {
@@ -147,6 +151,9 @@ onBeforeUnmount(() => {
     clearInterval(urgencyCheckInterval)
   }
   window.removeEventListener('focus', checkTasksUrgency)
+
+  // 停止云同步
+  stopAutoSync()
 })
 
 // onMounted(() => {

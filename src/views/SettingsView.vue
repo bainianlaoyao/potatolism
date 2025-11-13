@@ -4,7 +4,7 @@
       <n-form-item label="启用云端同步">
         <n-switch v-model:value="syncEnabled" />
       </n-form-item>
-      
+
       <div v-if="syncEnabled" class="sync-config">
         <n-form-item label="访问令牌">
           <n-input
@@ -15,14 +15,14 @@
           />
           <n-button @click="generateToken" size="small">生成新令牌</n-button>
         </n-form-item>
-        
+
         <n-form-item label="服务器地址">
           <n-input
             v-model:value="syncConfig.baseUrl"
             placeholder="http://localhost:3000"
           />
         </n-form-item>
-        
+
         <n-form-item label="同步状态">
           <n-space align="center">
             <n-tag :type="syncStatusType" size="small">
@@ -32,7 +32,7 @@
             <n-button type="primary" @click="performSync" size="small">立即同步</n-button>
           </n-space>
         </n-form-item>
-        
+
         <n-form-item label="最后同步" v-if="syncConfig.lastSync">
           <n-text depth="3">{{ formatLastSyncTime(syncConfig.lastSync) }}</n-text>
         </n-form-item>
