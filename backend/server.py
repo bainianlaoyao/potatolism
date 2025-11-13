@@ -340,5 +340,24 @@ async def debug_allowed_tokens(x_debug_secret: Optional[str] = Header(None)):
 
 if __name__ == '__main__':
     import uvicorn
-    # Keep the same port as the previous Node server for compatibility
-    uvicorn.run(app, host='0.0.0.0', port=3000)
+    # TLS support: read cert/key from env or default to backend/cert.pem & backend/key.pem
+    # If both files exist, enable TLS (default to port 443). Otherwise keep existing behavior (port from BACKEND_PORT or 3000).
+    cert = os.environ.get("BACKEND_CERT", os.path.join(os.path.dirname(__file__), "cert.pem"))
+    key = os.environ.get("BACKEND_KEY", os.path.join(os.path.dirname(__file__), "key.pem"))
+    port = int(os.environ.get("BACKEND_PORT", "3000"))
+    use_ssl = False
+    try:
+        if os.path.exists(cert) and os.path.exists(key):
+            use_ssl = True
+            # If caller didn't override port and we're enabling TLS, default to 443
+            if port == 3000:
+                port = 443
+    except Exception:
+        # If any filesystem check fails, fall back to non-TLS run
+        use_ssl = False
+
+    if use_ssl:
+        uvicorn.run(app, host="0.0.0.0", port=port, ssl_certfile=cert, ssl_keyfile=key)
+    else:
+        # Keep the same port as the previous Node server for compatibility when not using TLS
+        uvicorn.run(app, host="0.0.0.0", port=port)
