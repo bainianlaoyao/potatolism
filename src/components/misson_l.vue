@@ -1,5 +1,5 @@
 <template>
-  <div class="todo-app">
+  <div class="todo-app" @show-add-task-modal="onShowAddTaskModal">
     <!-- 主内容区 -->
     <div class="main-content">
       <div class="list-header">
@@ -239,7 +239,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, inject } from 'vue'
+import { ref, reactive, computed, inject, watch } from 'vue'
 import { defineEmits, defineProps, defineExpose } from 'vue'
 import {
   NButton,
