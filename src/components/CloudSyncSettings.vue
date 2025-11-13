@@ -3,23 +3,16 @@
     <!-- 设置页面头部 -->
     <div class="settings-header">
       <h2>☁️ 云端同步设置</h2>
-      <p class="settings-description">
-        配置云端同步功能，在多设备间同步您的任务数据
-      </p>
+      <p class="settings-description">配置云端同步功能，在多设备间同步您的任务数据</p>
     </div>
 
     <!-- 云同步开关 -->
     <div class="setting-section">
       <div class="section-title">
         <span>启用云同步</span>
-        <n-switch
-          v-model:value="cloudSyncEnabled"
-          @update:value="onCloudSyncToggle"
-        />
+        <n-switch v-model:value="cloudSyncEnabled" @update:value="onCloudSyncToggle" />
       </div>
-      <p class="section-description">
-        启用后，您的任务数据将自动同步到云端
-      </p>
+      <p class="section-description">启用后，您的任务数据将自动同步到云端</p>
     </div>
 
     <!-- 配置区域（仅在启用时显示） -->
@@ -33,9 +26,7 @@
           :disabled="isSyncing"
           @blur="validateBaseUrl"
         />
-        <p class="setting-help">
-          请输入您的云端服务器地址
-        </p>
+        <p class="setting-help">请输入您的云端服务器地址</p>
       </div>
 
       <!-- Token配置 -->
@@ -48,17 +39,11 @@
             :disabled="isSyncing"
             type="password"
           />
-          <n-button
-            @click="generateNewToken"
-            size="small"
-            :disabled="isSyncing"
-          >
+          <n-button @click="generateNewToken" size="small" :disabled="isSyncing">
             重新生成
           </n-button>
         </div>
-        <p class="setting-help">
-          令牌用于标识您的设备，请妥善保存
-        </p>
+        <p class="setting-help">令牌用于标识您的设备，请妥善保存</p>
       </div>
 
       <!-- Token显示和复制 -->
@@ -67,12 +52,7 @@
           <div class="token-content">
             <span class="token-label">当前令牌：</span>
             <code class="token-value">{{ token }}</code>
-            <n-button
-              @click="copyToken"
-              size="tiny"
-              quaternary
-              :disabled="isSyncing"
-            >
+            <n-button @click="copyToken" size="tiny" quaternary :disabled="isSyncing">
               复制
             </n-button>
           </div>
@@ -85,26 +65,11 @@
       <div class="section-title">
         <span>同步状态</span>
         <div class="status-indicators">
-          <n-tag
-            :type="syncStatusTagType"
-            size="small"
-          >
+          <n-tag :type="syncStatusTagType" size="small">
             {{ syncStatusText }}
           </n-tag>
-          <n-tag
-            v-if="isOnline"
-            type="success"
-            size="small"
-          >
-            在线
-          </n-tag>
-          <n-tag
-            v-else
-            type="warning"
-            size="small"
-          >
-            离线
-          </n-tag>
+          <n-tag v-if="isOnline" type="success" size="small"> 在线 </n-tag>
+          <n-tag v-else type="warning" size="small"> 离线 </n-tag>
         </div>
       </div>
 
@@ -129,19 +94,10 @@
         >
           {{ isSyncing ? '同步中...' : '立即同步' }}
         </n-button>
-        <n-button
-          @click="testConnection"
-          secondary
-          :disabled="!isConfigured || isSyncing"
-        >
+        <n-button @click="testConnection" secondary :disabled="!isConfigured || isSyncing">
           测试连接
         </n-button>
-        <n-button
-          @click="clearLocalData"
-          quaternary
-          type="error"
-          :disabled="isSyncing"
-        >
+        <n-button @click="clearLocalData" quaternary type="error" :disabled="isSyncing">
           清除本地数据
         </n-button>
       </div>
@@ -160,11 +116,7 @@
 
     <!-- 消息提示 -->
     <n-message-provider>
-      <n-message
-        v-if="message"
-        :type="messageType"
-        :content="message"
-      />
+      <n-message v-if="message" :type="messageType" :content="message" />
     </n-message-provider>
   </div>
 </template>
@@ -172,15 +124,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useTasksStore } from '@/stores/tasksStore'
-import {
-  NSwitch,
-  NInput,
-  NButton,
-  NCard,
-  NTag,
-  useMessage,
-  NMessageProvider
-} from 'naive-ui'
+import { NSwitch, NInput, NButton, NCard, NTag, useMessage, NMessageProvider } from 'naive-ui'
 
 // Props（保留类型提示，当前未使用）
 defineProps<{ onClose?: () => void }>()
@@ -240,11 +184,14 @@ const lastSyncTimeText = computed(() => {
   const now = new Date()
   const diff = now.getTime() - date.getTime()
 
-  if (diff < 60000) { // 1分钟内
+  if (diff < 60000) {
+    // 1分钟内
     return '刚刚'
-  } else if (diff < 3600000) { // 1小时内
+  } else if (diff < 3600000) {
+    // 1小时内
     return `${Math.floor(diff / 60000)}分钟前`
-  } else if (diff < 86400000) { // 1天内
+  } else if (diff < 86400000) {
+    // 1天内
     return `${Math.floor(diff / 3600000)}小时前`
   } else {
     return date.toLocaleDateString()
@@ -277,7 +224,7 @@ const saveSettings = () => {
       enabled: cloudSyncEnabled.value,
       baseUrl: baseUrl.value.trim(),
       token: token.value.trim(),
-      lastSyncTime: lastSyncTime.value
+      lastSyncTime: lastSyncTime.value,
     }
     localStorage.setItem('cloudSyncSettings', JSON.stringify(settings))
   } catch (e) {
@@ -361,11 +308,11 @@ const manualSync = async () => {
     })
 
     if (!resp.ok) throw new Error('sync failed')
-  const data = await resp.json()
+    const data = await resp.json()
 
-  // 更新 Pinia 中的任务数据
-  const tasksStore = useTasksStore()
-  tasksStore.tasks = Array.isArray(data.tasks) ? data.tasks : []
+    // 更新 Pinia 中的任务数据
+    const tasksStore = useTasksStore()
+    tasksStore.tasks = Array.isArray(data.tasks) ? data.tasks : []
 
     lastSyncTime.value = Date.now()
     syncStatus.value = 'success'
